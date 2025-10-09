@@ -24,7 +24,7 @@ const Header = () => {
     <header className="header">
       <div className="header-content">
         <h1 className="logo" onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
-          Cartoon Gen
+          CartoonGen
         </h1>
         <nav className="nav">
           <button onClick={() => navigate('/')} className="nav-btn">

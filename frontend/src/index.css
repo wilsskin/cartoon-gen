@@ -419,6 +419,16 @@ body {
   transform: translateY(-2px);
 }
 
+.labubu-btn {
+  background-color: #232ED1;
+  border-color: #232ED1;
+}
+
+.labubu-btn:hover:not(:disabled) {
+  background-color: #1a23a8;
+  transform: translateY(-2px);
+}
+
 .loading-message {
   color: #1a1a1a;
   font-style: italic;

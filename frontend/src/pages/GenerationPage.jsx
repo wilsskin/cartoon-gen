@@ -80,6 +80,13 @@ const GenerationPage = ({ selectedNews }) => {
           >
             {isLoading ? 'Generating...' : 'Absurd'}
           </button>
+          <button
+            onClick={() => handleGenerateImage('Labubu')}
+            disabled={isLoading}
+            className="generation-btn labubu-btn"
+          >
+            {isLoading ? 'Generating...' : 'Labubu'}
+          </button>
         </div>
 
         {isLoading && (

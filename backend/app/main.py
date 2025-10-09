@@ -63,6 +63,7 @@ async def generate_image(request: ImageRequest):
     style_modifiers = {
         "Funnier": "in a highly exaggerated, funny, satirical cartoon style, vibrant colors",
         "More Absurd": "in a surreal, abstract, and absurd art style, dreamlike, bizarre",
+        "Labubu": "in the whimsical Labubu toy art style — all human figures reimagined as Labubu-like characters with big heads, small bodies, and sharp teeth; expressive pastel colors, vinyl toy aesthetic, cute but mischievous mood, maintaining the original political scene composition; cinematic lighting, soft textures, collectible figure look",
     }
 
     modifier = style_modifiers.get(request.style, "")
