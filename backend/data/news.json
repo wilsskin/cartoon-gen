@@ -1,0 +1,72 @@
+[
+  {
+    "id": 1,
+    "headline": "Chicago and Portland Await Rulings on Trump Troop Deployments",
+    "summary": "The Trump administration is seeking to federalize and deploy National Guard troops into Democratic-led cities like Chicago and Portland to protect federal agents, ICE operations, and federal property. Local leaders are pushing back, calling it unconstitutional, while courts weigh in on the limits of federal military power within U.S. cities.",
+    "sourceName": "The New York Times",
+    "sourceUrl": "https://www.nytimes.com/live/2025/10/09/us/trump-national-guard-chicago-portland",
+    "pregeneratedCaption": "Federal power vs. state rights — the latest showdown.",
+    "basePrompt": "A tense standoff between federal troops and city officials in Chicago, symbolic imagery, political satire, digital art.",
+    "initialImageUrl": "/static/images/news-1.png"
+  },
+  {
+    "id": 2,
+    "headline": "Oklahoma’s Republican Governor Criticizes National Guard Deployment in Chicago",
+    "summary": "Oklahoma Governor Kevin Stitt, a Republican, broke ranks with Trump by opposing the idea of sending National Guard troops across state lines without consent. He warned that such actions undermine state sovereignty, setting a dangerous precedent even if the goals align with federal priorities.",
+    "sourceName": "The New York Times",
+    "sourceUrl": "https://www.nytimes.com/2025/10/09/us/politics/oklahoma-governor-national-guard.html",
+    "pregeneratedCaption": "When party loyalty meets state sovereignty.",
+    "basePrompt": "A governor standing against military orders, symbolic of state sovereignty, bold lighting, political realism.",
+    "initialImageUrl": "/static/images/news-2.png"
+  },
+  {
+    "id": 3,
+    "headline": "Trump’s Militarisation of Law Enforcement",
+    "summary": "The Financial Times examines Trump’s growing use of military and federal forces in domestic law enforcement, raising fears of authoritarian overreach. The piece questions how this blurring of lines between military and police power could reshape American governance.",
+    "sourceName": "Financial Times",
+    "sourceUrl": "https://www.ft.com/content/9a262a6a-d0a1-4b2a-9325-ef2c51443b2e",
+    "pregeneratedCaption": "When the line between police and military fades.",
+    "basePrompt": "Police and soldiers blended together under Trump banners, dystopian political art, dark and symbolic.",
+    "initialImageUrl": "/static/images/news-3.png"
+  },
+  {
+    "id": 4,
+    "headline": "Trump Says Israel and Hamas Have Agreed on First Phase of Gaza Peace Plan",
+    "summary": "Trump announced that Israel and Hamas have reached an initial phase of a peace agreement, aiming to reduce tensions and outline conditions for a long-term cease-fire. The announcement comes amid skepticism from international observers over its feasibility and durability.",
+    "sourceName": "Financial Times",
+    "sourceUrl": "https://www.ft.com/content/2bb3275c-6844-4505-9fc2-2942c2203777",
+    "pregeneratedCaption": "A fragile peace, or political theater?",
+    "basePrompt": "Handshake between Israeli and Hamas representatives under dramatic lighting, political illustration, hopeful yet tense.",
+    "initialImageUrl": "/static/images/news-4.png"
+  },
+  {
+    "id": 5,
+    "headline": "Emboldened Democrats Dig In on Health Care Demands in Shutdown Fight",
+    "summary": "Democrats are intensifying their push for expanded health care funding as the government shutdown fight continues, using the standoff to press their policy priorities. Republicans accuse them of holding the budget hostage for political gain.",
+    "sourceName": "NBC News",
+    "sourceUrl": "https://www.nbcnews.com/politics/congress/emboldened-democrats-dig-health-care-demands-shutdown-fight-rcna236625",
+    "pregeneratedCaption": "Health care or shutdown — Democrats stand their ground.",
+    "basePrompt": "Capitol Hill split between red and blue sides, health care symbols clashing over a government shutdown, political cartoon style.",
+    "initialImageUrl": "/static/images/news-5.png"
+  },
+  {
+    "id": 6,
+    "headline": "City Council Approves Budget for Squirrel Traffic Lights",
+    "summary": "In a controversial move, the city has allocated $2M for a pilot program to install miniature traffic lights at major park crosswalks for squirrels.",
+    "sourceName": "Local City Times",
+    "sourceUrl": "http://example.com/source1",
+    "pregeneratedCaption": "Finally, fiscal responsibility.",
+    "basePrompt": "A tiny traffic light for squirrels in a city park, vector art, humorous, satirical.",
+    "initialImageUrl": "/static/images/news-6.png"
+  },
+  {
+    "id": 7,
+    "headline": "Study Finds Houseplants Are Secretly Judging Your Life Choices",
+    "summary": "A new botanical study suggests that common houseplants exhibit measurable disappointment when owners make poor decisions, like watching bad reality TV.",
+    "sourceName": "Science Today",
+    "sourceUrl": "http://example.com/source2",
+    "pregeneratedCaption": "My ficus is not wrong.",
+    "basePrompt": "A sad, wilting ficus plant sitting next to a glowing television screen, cartoon style, funny, high contrast.",
+    "initialImageUrl": "/static/images/news-7.png"
+  }
+]
