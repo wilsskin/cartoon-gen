@@ -16,11 +16,14 @@ function App() {
     // Fetch the initial list of news headlines on component mount
     axios.get(`${API_BASE_URL}/api/news`)
       .then(response => {
+        console.log('News items fetched:', response.data);
         setNewsItems(response.data);
+        setError(''); // Clear any previous errors
       })
       .catch(err => {
         console.error("Failed to fetch news:", err);
         setError('Could not connect to the backend. Is it running?');
+        setNewsItems([]); // Ensure it's empty on error
       });
   }, []);
 

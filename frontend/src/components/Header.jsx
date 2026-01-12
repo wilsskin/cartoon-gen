@@ -1,42 +1,20 @@
-import { useNavigate, useLocation } from 'react-router-dom';
+import headerIcon from '../assets/images/header-icon-3da00a.svg';
 
 const Header = () => {
-  const navigate = useNavigate();
-  const location = useLocation();
-
-  const scrollToHeadlines = () => {
-    const headlinesSection = document.getElementById('headlines-section');
-    if (headlinesSection) {
-      headlinesSection.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
-
-  const handleGenerateClick = () => {
-    if (location.pathname === '/') {
-      scrollToHeadlines();
-    } else {
-      navigate('/');
-      setTimeout(scrollToHeadlines, 100);
-    }
-  };
+  // Get current date and format it as "Friday, October 10th"
+  const currentDate = new Date();
+  const options = { weekday: 'long', month: 'long', day: 'numeric' };
+  const formattedDate = currentDate.toLocaleDateString('en-US', options);
 
   return (
     <header className="header">
       <div className="header-content">
-        <h1 className="logo" onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
-          CartoonGen
-        </h1>
-        <nav className="nav">
-          <button onClick={() => navigate('/')} className="nav-btn">
-            Home
-          </button>
-          <button onClick={handleGenerateClick} className="nav-btn">
-            Generate
-          </button>
-          <button onClick={handleGenerateClick} className="nav-btn primary">
-            Get Started
-          </button>
-        </nav>
+        <div className="header-icon">
+          <img src={headerIcon} alt="" width="24" height="24" />
+        </div>
+        <div className="header-date">
+          {formattedDate}
+        </div>
       </div>
     </header>
   );

@@ -9,16 +9,17 @@ from PIL import Image
 load_dotenv()
 
 # --- Gemini API Configuration ---
-try:
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        raise ValueError("GEMINI_API_KEY not found in .env file.")
+api_key = os.environ.get("GEMINI_API_KEY")
+client = None
 
-    # Initialize the Gemini client with the API key
-    client = genai.Client(api_key=api_key)
-
-except (KeyError, ValueError) as e:
-    raise RuntimeError(f"Configuration error: {e}") from e
+if api_key:
+    try:
+        # Initialize the Gemini client with the API key
+        client = genai.Client(api_key=api_key)
+    except Exception as e:
+        print(f"Warning: Failed to initialize Gemini client: {e}")
+else:
+    print("Warning: GEMINI_API_KEY not found in .env file. Image generation will not work.")
 
 
 def generate_satire_image(prompt: str) -> str | None:
@@ -31,6 +32,10 @@ def generate_satire_image(prompt: str) -> str | None:
     Returns:
         A data URL string (e.g., "data:image/png;base64,...") or None if generation failed.
     """
+    if not client:
+        print("Error: Gemini API client not initialized. Please set GEMINI_API_KEY in .env file.")
+        return None
+    
     try:
         # Generate image using Gemini 2.5 Flash Image model
         response = client.models.generate_content(
