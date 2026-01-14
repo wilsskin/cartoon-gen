@@ -1,6 +1,7 @@
 import os
 import base64
 from io import BytesIO
+from typing import Optional
 from dotenv import load_dotenv
 from google import genai
 from PIL import Image
@@ -22,7 +23,7 @@ else:
     print("Warning: GEMINI_API_KEY not found in .env file. Image generation will not work.")
 
 
-def generate_satire_image(prompt: str) -> str | None:
+def generate_satire_image(prompt: str) -> Optional[str]:
     """
     Generates an image using the Gemini 2.5 Flash Image API and returns a Base64 data URL.
 

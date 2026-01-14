@@ -1,0 +1,70 @@
+{
+  "version": "1.0.0",
+  "defaults": {
+    "enabled": true,
+    "timeoutSeconds": 10,
+    "maxItemsPerFeed": 5
+  },
+  "feeds": [
+    {
+      "id": "wsj_world",
+      "name": "Wall Street Journal",
+      "url": "https://feeds.a.dj.com/rss/RSSWorldNews.xml",
+      "category": "general",
+      "language": "en",
+      "enabled": true,
+      "weight": 1,
+      "notes": "WSJ world and global coverage"
+    },
+    {
+      "id": "nyt_home",
+      "name": "New York Times",
+      "url": "http://feeds.nytimes.com/nyt/rss/HomePage",
+      "category": "general",
+      "language": "en",
+      "enabled": true,
+      "weight": 1,
+      "notes": "NYT main homepage feed"
+    },
+    {
+      "id": "cnn_top",
+      "name": "CNN",
+      "url": "http://rss.cnn.com/rss/cnn_topstories.rss",
+      "category": "general",
+      "language": "en",
+      "enabled": true,
+      "weight": 1,
+      "notes": "CNN top stories"
+    },
+    {
+      "id": "nbc_top",
+      "name": "NBC News",
+      "url": "http://feeds.nbcnews.com/feeds/topstories",
+      "category": "general",
+      "language": "en",
+      "enabled": true,
+      "weight": 1,
+      "notes": "NBC News top stories"
+    },
+    {
+      "id": "fox_us",
+      "name": "Fox News",
+      "url": "https://moxie.foxnews.com/google-publisher/us.xml",
+      "category": "general",
+      "language": "en",
+      "enabled": true,
+      "weight": 1,
+      "notes": "Fox News US coverage"
+    },
+    {
+      "id": "npr_news",
+      "name": "NPR",
+      "url": "https://feeds.npr.org/1001/rss.xml",
+      "category": "general",
+      "language": "en",
+      "enabled": true,
+      "weight": 1,
+      "notes": "NPR national and global news"
+    }
+  ]
+}
