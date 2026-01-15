@@ -43,9 +43,9 @@ body {
 }
 
 .header-content {
-  max-width: 600px;
+  max-width: 696px;
   margin: 0 auto;
-  padding: 0 32px;
+  padding: 8px 48px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -79,12 +79,19 @@ body {
 }
 
 .landing-container {
-  max-width: 600px;
+  max-width: 696px;
   margin: 0 auto;
-  padding: 0 32px;
+  padding: 0;
   display: flex;
   flex-direction: column;
   gap: 48px;
+}
+
+/* Content Wrapper - matches Frame 30 from Figma */
+.content-wrapper {
+  display: flex;
+  flex-direction: column;
+  padding: 0 48px;
 }
 
 /* Hero Section */
@@ -103,6 +110,7 @@ body {
   color: #000000;
   width: 600px;
   margin-bottom: 0;
+  padding-top: 32px;
 }
 
 .hero-content {
@@ -117,13 +125,14 @@ body {
 .hero-subtitle-container {
   width: 480px;
   border-radius: 8px;
+  padding-bottom: 16px;
 }
 
 .hero-subtitle {
   font-family: 'Crimson Text', Georgia, serif;
   font-size: 18px;
   font-weight: 400;
-  line-height: 1.0;
+  line-height: 1.1;
   color: #767676;
 }
 
@@ -139,7 +148,7 @@ body {
 .filter-section {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 4px;
   padding-top: 8px;
 }
 
@@ -258,6 +267,12 @@ body {
   padding-top: 80px;
 }
 
+.recently-created-title-wrapper {
+  display: flex;
+  justify-content: flex-start;
+  align-items: flex-start;
+}
+
 .recently-created-title {
   font-family: 'Crimson Pro', serif;
   font-size: 18px;
@@ -269,7 +284,7 @@ body {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
 }
 
@@ -317,7 +332,7 @@ body {
 
 /* Footer */
 .landing-footer {
-  padding: 72px 0 16px 0;
+  padding: 72px 48px 24px 48px;
   display: flex;
   justify-content: flex-end;
   align-items: flex-end;
@@ -365,7 +380,9 @@ body {
   line-height: 1.11;
   letter-spacing: -0.01em;
   color: #767676;
-  text-decoration: none;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-thickness: 0.8px;
 }
 
 .footer-link:hover {
@@ -533,8 +550,20 @@ canvas {
 
 /* Responsive Design */
 @media (max-width: 768px) {
+  .header-content {
+    padding: 8px 16px;
+  }
+
   .landing-container {
+    max-width: 100%;
+  }
+
+  .content-wrapper {
     padding: 0 16px;
+  }
+
+  .hero-section {
+    padding-bottom: 80px;
   }
 
   .hero-title {
@@ -546,8 +575,21 @@ canvas {
     width: 100%;
   }
 
+  .filter-section {
+    padding-top: 8px;
+  }
+
   .news-list-section {
     width: 100%;
+    padding-top: 8px;
+  }
+
+  .more-button {
+    padding-top: 8px;
+  }
+
+  .recently-created-section {
+    padding-top: 80px;
   }
 
   .recently-created-grid {
@@ -557,5 +599,9 @@ canvas {
 
   .recent-card {
     width: 100%;
+  }
+
+  .landing-footer {
+    padding: 72px 16px 16px 16px;
   }
 }
