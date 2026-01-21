@@ -8,7 +8,6 @@
 --font-primary: 'Crimson Text', Georgia, serif;
 --font-display: 'Crimson Pro', serif;
 
---text-size-xs: 12px;
 --text-size-sm: 14px;
 --text-size-base: 18px;
 --text-size-lg: 36px;

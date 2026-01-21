@@ -189,11 +189,6 @@ body {
   padding: 16px 0;
   border-bottom: 1px solid rgba(118, 118, 118, 0.3);
   cursor: pointer;
-  transition: background-color 0.2s ease;
-}
-
-.news-item:hover {
-  background-color: rgba(0, 0, 0, 0.02);
 }
 
 .news-item-first {
@@ -215,6 +210,8 @@ body {
   letter-spacing: -0.015em;
   color: #000000;
   width: 100%;
+  transition: color 0.15s cubic-bezier(0.25, 0.1, 0.25, 1);
+  will-change: color;
 }
 
 .news-item-meta {
@@ -229,6 +226,8 @@ body {
   width: 17.78px;
   height: 10px;
   object-fit: cover;
+  transition: opacity 0.15s cubic-bezier(0.25, 0.1, 0.25, 1);
+  will-change: opacity;
 }
 
 .news-item-category {
@@ -237,6 +236,34 @@ body {
   font-weight: 400;
   line-height: 1.33;
   color: #767676;
+  transition: color 0.15s cubic-bezier(0.25, 0.1, 0.25, 1);
+  will-change: color;
+}
+
+/* Hover effect: fade out all other items when hovering on the list */
+.news-list-section:hover .news-item .news-item-headline {
+  color: #B3B3B3;
+}
+
+.news-list-section:hover .news-item .news-item-category {
+  color: #B3B3B3;
+}
+
+.news-list-section:hover .news-item .news-item-logo {
+  opacity: 0.4;
+}
+
+/* Keep the hovered item at full color */
+.news-list-section .news-item:hover .news-item-headline {
+  color: #000000;
+}
+
+.news-list-section .news-item:hover .news-item-category {
+  color: #767676;
+}
+
+.news-list-section .news-item:hover .news-item-logo {
+  opacity: 1;
 }
 
 /* More Button */
@@ -248,8 +275,8 @@ body {
   background: none;
   border: none;
   cursor: pointer;
-  font-family: 'Roboto', sans-serif;
-  font-size: 12px;
+  font-family: 'Crimson Text', Georgia, serif;
+  font-size: 14px;
   font-weight: 400;
   line-height: 1.3;
   color: #767676;
@@ -310,7 +337,6 @@ body {
   justify-content: center;
   gap: 8px;
   width: calc((600px - 32px) / 2);
-  cursor: pointer;
 }
 
 .recent-card-image {
@@ -389,127 +415,150 @@ body {
   text-decoration: underline;
 }
 
-/* Generation Page (keep existing styles) */
+/* Generation Page - New Figma-based styles */
 .generation-page {
-  flex: 1;
-  padding: 40px;
-  max-width: 1280px;
-  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  max-width: 696px;
   width: 100%;
+  margin: 0 auto;
   background-color: #FFFFFF;
+  flex: 1;
 }
 
-.back-btn {
-  padding: 12px 24px;
-  background-color: #FCE9BE;
-  color: #1a1a1a;
-  border: 2px solid #FCE9BE;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 18px;
-  font-weight: 600;
-  font-family: 'Crimson Text', Georgia, serif;
-  transition: all 0.25s;
-  margin-bottom: 40px;
-  display: inline-flex;
+/* Generation Main Content */
+.generation-main {
+  display: flex;
+  flex-direction: column;
   align-items: center;
+  padding: 48px 48px 0;
+}
+
+/* Back Button */
+.generation-back {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+  padding: 0 0 8px;
+  width: 408px;
+  cursor: pointer;
+}
+
+.generation-back:hover {
+  opacity: 0.7;
+}
+
+.back-arrow {
+  display: block;
+}
+
+.back-text {
+  font-family: 'Roboto', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.3;
+  color: #767676;
+  text-align: center;
+}
+
+/* Card Container */
+.generation-card-container {
+  display: flex;
+  flex-direction: column;
+  width: 408px;
+  padding: 0 0 48px;
+}
+
+/* Image Card */
+.generation-card {
+  width: 100%;
+  height: 408px;
+  border-radius: 8px;
+  border: 1px solid #595959;
+  background: linear-gradient(rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.05)), #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.generation-card canvas {
+  max-width: 100%;
+  max-height: 100%;
+  border: none;
+  border-radius: 0;
+}
+
+/* Text Content */
+.generation-text-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 0 16px;
+}
+
+.generation-headline {
+  font-family: 'Crimson Text', Georgia, serif;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.33;
+  letter-spacing: -0.015em;
+  color: #000000;
+}
+
+.generation-subtext {
+  font-family: 'Crimson Text', Georgia, serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.33;
+  color: #595959;
+}
+
+/* Action Icons */
+.generation-actions {
+  display: flex;
+  flex-direction: row;
   gap: 8px;
 }
 
-.back-btn:hover {
-  background-color: #FEF4DF;
-  border-color: #232ED1;
-  transform: translateX(-3px);
-}
-
-.generation-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 40px;
-}
-
-.image-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 24px;
-  background-color: #FCE9BE;
-  padding: 32px;
-  border-radius: 8px;
-}
-
-.generation-controls {
-  display: flex;
-  gap: 24px;
-  justify-content: center;
-}
-
-.generation-btn {
-  padding: 16px 48px;
-  border-radius: 8px;
-  border: 2px solid transparent;
-  font-size: 24px;
-  font-weight: 600;
-  font-family: 'Crimson Text', Georgia, serif;
+.action-icons {
   cursor: pointer;
-  transition: all 0.3s ease;
-  color: #fff;
 }
 
-.generation-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.action-icons:hover {
+  opacity: 0.8;
 }
 
-.funnier-btn {
-  background-color: #232ED1;
-  border-color: #232ED1;
+/* Generation Footer */
+.generation-footer {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-end;
+  align-items: flex-end;
+  gap: 48px;
+  padding: 72px 48px 24px;
+  margin-top: auto;
 }
 
-.funnier-btn:hover:not(:disabled) {
-  background-color: #1a23a8;
-  transform: translateY(-2px);
-}
-
-.absurd-btn {
-  background-color: #232ED1;
-  border-color: #232ED1;
-}
-
-.absurd-btn:hover:not(:disabled) {
-  background-color: #1a23a8;
-  transform: translateY(-2px);
-}
-
-.labubu-btn {
-  background-color: #232ED1;
-  border-color: #232ED1;
-}
-
-.labubu-btn:hover:not(:disabled) {
-  background-color: #1a23a8;
-  transform: translateY(-2px);
-}
-
+/* Legacy styles kept for compatibility */
 .loading-message {
   color: #1a1a1a;
   font-style: italic;
   text-align: center;
-  font-size: 20px;
+  font-size: 14px;
   font-family: 'Crimson Text', Georgia, serif;
 }
 
 .error-message {
   color: #d32f2f;
   text-align: center;
-  padding: 16px 24px;
-  background-color: #FCE9BE;
-  border-radius: 8px;
-  border: 2px solid #d32f2f;
-  font-weight: 600;
+  padding: 8px 16px;
+  background-color: rgba(211, 47, 47, 0.1);
+  border-radius: 4px;
+  font-weight: 400;
   font-family: 'Crimson Text', Georgia, serif;
-  font-size: 18px;
+  font-size: 14px;
 }
 
 .global-error {

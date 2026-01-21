@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import CanvasMeme from '../components/CanvasMeme';
+import arrowBack from '../assets/images/arrow-back.svg';
+import actionIcons from '../assets/images/action-icons.svg';
 
 const API_BASE_URL = 'http://localhost:8000';
 
@@ -50,50 +52,56 @@ const GenerationPage = ({ selectedNews }) => {
 
   return (
     <div className="generation-page">
-      <button onClick={() => navigate('/')} className="back-btn">
-        ← Back
-      </button>
-
-      <div className="generation-content">
-        <div className="image-container">
-          {error && <p className="error-message">{error}</p>}
-
-          <CanvasMeme
-            backgroundImageUrl={currentImageUrl}
-            captionText={selectedNews.pregeneratedCaption}
-            isLoading={isLoading}
-          />
+      {/* Main Content */}
+      <div className="generation-main">
+        {/* Back Button */}
+        <div className="generation-back" onClick={() => navigate('/')}>
+          <img src={arrowBack} alt="" className="back-arrow" width="16" height="16" />
+          <span className="back-text">Back</span>
         </div>
 
-        <div className="generation-controls">
-          <button
-            onClick={() => handleGenerateImage('Funnier')}
-            disabled={isLoading}
-            className="generation-btn funnier-btn"
-          >
-            {isLoading ? 'Generating...' : 'Funnier'}
-          </button>
-          <button
-            onClick={() => handleGenerateImage('More Absurd')}
-            disabled={isLoading}
-            className="generation-btn absurd-btn"
-          >
-            {isLoading ? 'Generating...' : 'Absurd'}
-          </button>
-          <button
-            onClick={() => handleGenerateImage('Labubu')}
-            disabled={isLoading}
-            className="generation-btn labubu-btn"
-          >
-            {isLoading ? 'Generating...' : 'Labubu'}
-          </button>
-        </div>
+        {/* Card Container */}
+        <div className="generation-card-container">
+          {/* Image Card */}
+          <div className="generation-card">
+            {error && <p className="error-message">{error}</p>}
+            <CanvasMeme
+              backgroundImageUrl={currentImageUrl}
+              captionText={selectedNews.pregeneratedCaption}
+              isLoading={isLoading}
+            />
+          </div>
 
-        {isLoading && (
-          <p className="loading-message">
-            Generating new image... this may take a moment.
+          {/* Text Content */}
+          <div className="generation-text-content">
+            <h2 className="generation-headline">{selectedNews.headline}</h2>
+            <p className="generation-subtext">This is subtext and more about the headline the person selected</p>
+          </div>
+
+          {/* Action Icons */}
+          <div className="generation-actions">
+            <img src={actionIcons} alt="Actions" className="action-icons" />
+          </div>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="generation-footer">
+        <div className="footer-text">
+          <p className="footer-subtitle">
+            Built by{' '}
+            <span>
+              <a href="#" style={{ textDecoration: 'underline', textUnderlineOffset: '2px', textDecorationThickness: '0.8px', color: 'inherit' }}>Wilson Skinner</a>
+            </span>
+            {' '}and{' '}
+            <span>
+              <a href="#" style={{ textDecoration: 'underline', textUnderlineOffset: '2px', textDecorationThickness: '0.8px', color: 'inherit' }}>Aryan Daga</a>
+            </span>
           </p>
-        )}
+        </div>
+        <div className="footer-links">
+          <a href="#" className="footer-link">How it works</a>
+        </div>
       </div>
     </div>
   );

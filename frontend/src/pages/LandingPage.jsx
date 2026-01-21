@@ -88,7 +88,6 @@ const LandingPage = ({ newsItems, selectedNews, setSelectedNews }) => {
                 <div
                   key={`recent-${item.id}`}
                   className="recent-card"
-                  onClick={() => handleItemClick(item)}
                 >
                   <div className="recent-card-image"></div>
                   <p className="recent-card-text">{item.headline}</p>
