@@ -52,6 +52,7 @@ if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 from db import get_db
 from services.rss_ingest import run_rss_ingest
+from services.classify_category import classify_category
 
 # Define the base directory of the backend
 BASE_DIR = Path(__file__).resolve().parent
@@ -90,6 +91,9 @@ class ImageRequest(BaseModel):
 # --- API Endpoints ---
 # Maximum number of news items to return from database
 MAX_NEWS_ITEMS = 30
+
+# Only categories we allow clients to see.
+ALLOWED_CATEGORIES = {"World", "Politics", "Business", "Technology", "Culture"}
 
 @app.get("/api/news")
 def get_news(db: Session = Depends(get_db)):
@@ -141,6 +145,14 @@ def get_news(db: Session = Depends(get_db)):
                 # Generate pregeneratedCaption from title (simplified)
                 caption = title[:80] + "..." if len(title) > 80 else title
                 
+                raw_category = (row[6] or "").strip()
+                # Ensure category is always one of the 5 buckets, even if older DB rows
+                # still contain RSS tags or "general".
+                if raw_category in ALLOWED_CATEGORIES:
+                    category = raw_category
+                else:
+                    category = classify_category(title, f"{summary} {raw_category}".strip())
+
                 news_item = {
                     "id": item_id,
                     "headline": title,
@@ -150,7 +162,7 @@ def get_news(db: Session = Depends(get_db)):
                     "pregeneratedCaption": caption,
                     "basePrompt": base_prompt,
                     "initialImageUrl": "",  # RSS items don't have pre-generated images (empty string for frontend compatibility)
-                    "category": row[6] or "general",  # category
+                    "category": category,  # one of 5 buckets
                 }
                 news_items.append(news_item)
             
@@ -176,6 +188,11 @@ def _load_static_news():
     try:
         with open(data_file_path, "r") as f:
             data = json.load(f)
+        # Ensure fallback items have a 5-bucket category too (Culture is last resort)
+        for item in data:
+            headline = item.get("headline", "")
+            summary = item.get("summary", "")
+            item["category"] = classify_category(headline, summary)
         return data
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="News data file not found.")

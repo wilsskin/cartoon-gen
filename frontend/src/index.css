@@ -188,7 +188,6 @@ body {
   gap: 16px;
   padding: 16px 0;
   border-bottom: 1px solid rgba(118, 118, 118, 0.3);
-  cursor: pointer;
 }
 
 .news-item-first {
@@ -210,6 +209,7 @@ body {
   letter-spacing: -0.015em;
   color: #000000;
   width: 100%;
+  cursor: pointer;
   transition: color 0.15s cubic-bezier(0.25, 0.1, 0.25, 1);
   will-change: color;
 }
@@ -236,34 +236,13 @@ body {
   font-weight: 400;
   line-height: 1.33;
   color: #767676;
-  transition: color 0.15s cubic-bezier(0.25, 0.1, 0.25, 1);
+  transition: color 0.25s cubic-bezier(0.25, 0.1, 0.25, 1);
   will-change: color;
 }
 
-/* Hover effect: fade out all other items when hovering on the list */
-.news-list-section:hover .news-item .news-item-headline {
-  color: #B3B3B3;
-}
-
-.news-list-section:hover .news-item .news-item-category {
-  color: #B3B3B3;
-}
-
-.news-list-section:hover .news-item .news-item-logo {
-  opacity: 0.4;
-}
-
-/* Keep the hovered item at full color */
-.news-list-section .news-item:hover .news-item-headline {
-  color: #000000;
-}
-
-.news-list-section .news-item:hover .news-item-category {
-  color: #767676;
-}
-
-.news-list-section .news-item:hover .news-item-logo {
-  opacity: 1;
+/* Hover effect: headline turns to secondary color when hovering headline */
+.news-item-headline:hover {
+  color: #727272;
 }
 
 /* More Button */

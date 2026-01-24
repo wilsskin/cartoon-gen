@@ -18,6 +18,9 @@ import requests
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+# Deterministic category classification (no AI/external APIs)
+from .classify_category import classify_category
+
 # Add backend directory to path for imports
 backend_path = Path(__file__).resolve().parent.parent
 if str(backend_path) not in sys.path:
@@ -147,18 +150,28 @@ def insert_items(db: Session, feed_id: str, entries: List[Dict],
         link = getattr(entry, 'link', '') or ''
         summary = getattr(entry, 'summary', '') or getattr(entry, 'description', '') or None
         published = parse_published_date(entry)
-        category = extract_category(entry, category_default)
+        # Option B: include RSS entry tag/category as extra signal (but never store raw tags)
+        rss_tag = extract_category(entry, None)
+        classifier_subtext = summary or ""
+        if rss_tag:
+            classifier_subtext = f"{classifier_subtext} {rss_tag}".strip()
+        category = classify_category(title, classifier_subtext)
         
         if not title or not link:
             continue
         
         try:
-            # Insert with ON CONFLICT DO NOTHING (unique constraint on feed_id, url)
+            # Upsert: insert new rows, or update category for existing rows
+            # (so previously-stored "general"/RSS tags get replaced after this change).
             result = db.execute(
                 text("""
                     INSERT INTO items (feed_id, title, summary, url, published_at, category)
                     VALUES (:feed_id, :title, :summary, :url, :published_at, :category)
-                    ON CONFLICT (feed_id, url) DO NOTHING
+                    ON CONFLICT (feed_id, url) DO UPDATE SET
+                        category = EXCLUDED.category,
+                        title = COALESCE(EXCLUDED.title, items.title),
+                        summary = COALESCE(EXCLUDED.summary, items.summary),
+                        published_at = COALESCE(EXCLUDED.published_at, items.published_at)
                     RETURNING id
                 """),
                 {

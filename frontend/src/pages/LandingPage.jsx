@@ -7,6 +7,7 @@ import wsjLogo from '../assets/images/wsj-logo.png';
 const LandingPage = ({ newsItems, selectedNews, setSelectedNews }) => {
   const [showAll, setShowAll] = useState(false);
   const navigate = useNavigate();
+  const allowedCategories = new Set(['World', 'Politics', 'Business', 'Technology', 'Culture']);
 
   const visibleHeadlines = showAll ? newsItems : newsItems.slice(0, 5);
 
@@ -53,13 +54,25 @@ const LandingPage = ({ newsItems, selectedNews, setSelectedNews }) => {
                 <div
                   key={item.id}
                   className={`news-item ${index === 0 ? 'news-item-first' : ''}`}
-                  onClick={() => handleItemClick(item)}
                 >
                   <div className="news-item-content">
-                    <h3 className="news-item-headline">{item.headline}</h3>
+                    <h3
+                      className="news-item-headline"
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => handleItemClick(item)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          handleItemClick(item);
+                        }
+                      }}
+                    >
+                      {item.headline}
+                    </h3>
                     <div className="news-item-meta">
                       <img src={wsjLogo} alt="" className="news-item-logo" width="17.78" height="10" />
-                      <span className="news-item-category">· Business</span>
+                      <span className="news-item-category">· {allowedCategories.has(item.category) ? item.category : 'Culture'}</span>
                     </div>
                   </div>
                 </div>
