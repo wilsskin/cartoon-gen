@@ -12,7 +12,6 @@ from datetime import datetime
 from typing import Dict, List, Optional, Any
 from uuid import uuid4
 
-from dotenv import load_dotenv
 import feedparser
 import requests
 from sqlalchemy import text
@@ -25,10 +24,6 @@ from .classify_category import classify_category
 backend_path = Path(__file__).resolve().parent.parent
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
-
-# Load environment variables from backend/.env
-env_path = backend_path / ".env"
-load_dotenv(dotenv_path=env_path, override=False)
 
 from db import engine
 

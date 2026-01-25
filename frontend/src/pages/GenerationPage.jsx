@@ -39,7 +39,12 @@ const GenerationPage = ({ selectedNews }) => {
     })
     .catch(err => {
       console.error("Image generation failed:", err);
-      setError('Image generation failed. Please try again.');
+      const backendDetail = err?.response?.data?.detail;
+      if (typeof backendDetail === 'string' && backendDetail.trim().length > 0) {
+        setError(backendDetail);
+      } else {
+        setError('Image generation failed. Please try again.');
+      }
     })
     .finally(() => {
       setIsLoading(false);

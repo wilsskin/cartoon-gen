@@ -2,25 +2,31 @@ import os
 import base64
 from io import BytesIO
 from typing import Optional
-from dotenv import load_dotenv
 from google import genai
 from PIL import Image
 
-# Load environment variables from .env file
-load_dotenv()
+_client: Optional[genai.Client] = None
 
-# --- Gemini API Configuration ---
-api_key = os.environ.get("GEMINI_API_KEY")
-client = None
 
-if api_key:
-    try:
-        # Initialize the Gemini client with the API key
-        client = genai.Client(api_key=api_key)
-    except Exception as e:
-        print(f"Warning: Failed to initialize Gemini client: {e}")
-else:
-    print("Warning: GEMINI_API_KEY not found in .env file. Image generation will not work.")
+def _get_gemini_client() -> genai.Client:
+    """
+    Lazily initialize the Gemini client.
+
+    The FastAPI app is responsible for loading environment variables once at
+    process startup (see backend/app/main.py). This module relies purely on
+    os.environ and must never call load_dotenv() to avoid nondeterminism.
+    """
+    global _client
+    if _client is not None:
+        return _client
+
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        # Never include the key value in errors/logs.
+        raise RuntimeError("GEMINI_API_KEY is not configured")
+
+    _client = genai.Client(api_key=api_key)
+    return _client
 
 
 def generate_satire_image(prompt: str) -> Optional[str]:
@@ -33,9 +39,7 @@ def generate_satire_image(prompt: str) -> Optional[str]:
     Returns:
         A data URL string (e.g., "data:image/png;base64,...") or None if generation failed.
     """
-    if not client:
-        print("Error: Gemini API client not initialized. Please set GEMINI_API_KEY in .env file.")
-        return None
+    client = _get_gemini_client()
     
     try:
         # Generate image using Gemini 2.5 Flash Image model
@@ -65,7 +69,5 @@ def generate_satire_image(prompt: str) -> Optional[str]:
         return f"data:image/png;base64,{base64_image}"
 
     except Exception as e:
-        print(f"An error occurred during image generation: {e}")
-        import traceback
-        traceback.print_exc()
+        # Do not print stack traces or secrets. Let the caller decide how to surface errors.
         return None

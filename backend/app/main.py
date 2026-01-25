@@ -229,6 +229,11 @@ async def generate_image(request: ImageRequest):
     Receives a base prompt and a style, constructs a final prompt,
     and calls the image generation service.
     """
+    # Fail loudly (but safely) if the server is not configured for image generation.
+    # Never log or return the key value.
+    if not os.environ.get("GEMINI_API_KEY"):
+        raise HTTPException(status_code=500, detail="GEMINI_API_KEY is not configured")
+
     style_modifiers = {
         "Funnier": "in a highly exaggerated, funny, satirical cartoon style, vibrant colors",
         "More Absurd": "in a surreal, abstract, and absurd art style, dreamlike, bizarre",
@@ -241,7 +246,14 @@ async def generate_image(request: ImageRequest):
     print(f"Generating image with prompt: {final_prompt}")
 
     # Call the image generation service
-    image_url = services.generate_satire_image(final_prompt)
+    try:
+        image_url = services.generate_satire_image(final_prompt)
+    except RuntimeError as e:
+        # Surface expected configuration errors clearly.
+        msg = str(e)
+        if "GEMINI_API_KEY" in msg:
+            raise HTTPException(status_code=500, detail="GEMINI_API_KEY is not configured")
+        raise HTTPException(status_code=500, detail="Image generation is not configured")
 
     if image_url:
         # The URL is now a Base64 data URL
