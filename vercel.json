@@ -3,7 +3,6 @@
   "outputDirectory": "dist",
   "devCommand": "npm run dev",
   "installCommand": "npm install",
-  "rootDirectory": "frontend",
   "framework": "vite",
   "rewrites": [
     {
