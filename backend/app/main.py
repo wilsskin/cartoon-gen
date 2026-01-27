@@ -42,7 +42,7 @@ try:
 except ImportError:
     # Fallback for older Python or systems without zoneinfo
     try:
-        import pytz
+        import pytz  # type: ignore[reportMissingModuleSource]
         ZoneInfo = pytz.timezone
     except ImportError:
         raise ImportError("zoneinfo or pytz is required for timezone support")
@@ -53,13 +53,11 @@ except ImportError:
 env_path = Path(__file__).resolve().parent.parent / ".env"
 load_dotenv(dotenv_path=env_path, override=False)
 
-# Fail loudly at startup if GEMINI_API_KEY is missing
-# This ensures the app never starts in an invalid configuration state
-if not os.environ.get("GEMINI_API_KEY"):
-    raise ValueError(
-        "GEMINI_API_KEY is not configured. "
-        "Set it in backend/.env (local dev) or as an environment variable (production)."
-    )
+# GEMINI_API_KEY is required for image generation but not for basic API endpoints
+# The /api/generate-image endpoint will check for it and return an error if missing
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+if not GEMINI_API_KEY:
+    print("WARNING: GEMINI_API_KEY is not configured. Image generation will not work.")
 
 # Check if static news fallback is allowed (default: false for production safety)
 ALLOW_STATIC_NEWS_FALLBACK = os.environ.get("ALLOW_STATIC_NEWS_FALLBACK", "false").lower() in ("true", "1", "yes")
@@ -96,6 +94,7 @@ app = FastAPI()
 
 # --- Middleware ---
 # Allow frontend running on localhost:5173 to make requests
+# Also allow production Vercel domains (configured via CORS_ORIGINS env var)
 origins = [
     "http://localhost:5173",
     "http://localhost:5174",
@@ -104,6 +103,11 @@ origins = [
     "http://127.0.0.1:5174",
     "http://127.0.0.1:5175",
 ]
+
+# Add production origins from environment variable (comma-separated)
+cors_origins_env = os.environ.get("CORS_ORIGINS", "")
+if cors_origins_env:
+    origins.extend([origin.strip() for origin in cors_origins_env.split(",") if origin.strip()])
 
 app.add_middleware(
     CORSMiddleware,
@@ -512,6 +516,15 @@ async def generate_image(request: ImageRequest, db: Session = Depends(get_db)):
 @app.get("/")
 def read_root():
     return {"status": "Backend is running"}
+
+
+@app.get("/api/health")
+def health_check():
+    """
+    Simple health check endpoint that doesn't require database connection.
+    Returns {"ok": true} if the server is running.
+    """
+    return {"ok": True}
 
 
 @app.get("/api/debug/db")

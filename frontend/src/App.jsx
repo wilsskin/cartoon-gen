@@ -5,7 +5,8 @@ import Header from './components/Header';
 import LandingPage from './pages/LandingPage';
 import GenerationPage from './pages/GenerationPage';
 
-const API_BASE_URL = 'http://localhost:8000';
+// Use environment variable for API URL, fallback to localhost for development
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
 function App() {
   const [newsItems, setNewsItems] = useState([]);
@@ -17,12 +18,18 @@ function App() {
     axios.get(`${API_BASE_URL}/api/news`)
       .then(response => {
         console.log('News items fetched:', response.data);
-        setNewsItems(response.data);
+        console.log('Number of items:', response.data?.length || 0);
+        setNewsItems(response.data || []);
         setError(''); // Clear any previous errors
+        if (!response.data || response.data.length === 0) {
+          setError('No headlines found. Backend may not have data for today.');
+        }
       })
       .catch(err => {
         console.error("Failed to fetch news:", err);
-        setError('Could not connect to the backend. Is it running?');
+        console.error("Error details:", err.response?.data || err.message);
+        const errorMsg = err.response?.data?.detail || err.message || 'Unknown error';
+        setError(`Could not connect to backend: ${errorMsg}. Make sure backend is running on ${API_BASE_URL}`);
         setNewsItems([]); // Ensure it's empty on error
       });
   }, []);
