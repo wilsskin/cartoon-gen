@@ -597,11 +597,17 @@ def debug_pull_feeds():
 
 
 @app.post("/api/cron/pull-feeds")
-def cron_pull_feeds(x_cron_secret: str = Header(..., alias="X-Cron-Secret")):
+def cron_pull_feeds(
+    authorization: Optional[str] = Header(None, alias="Authorization"),
+    x_cron_secret: Optional[str] = Header(None, alias="X-Cron-Secret")
+):
     """
     Production cron endpoint for RSS feed ingestion.
     
-    Requires X-Cron-Secret header matching CRON_SECRET environment variable.
+    Accepts either:
+    - Authorization: Bearer <CRON_SECRET> (Vercel Cron format)
+    - X-Cron-Secret: <CRON_SECRET> (backward compatibility)
+    
     Returns summary of ingestion run.
     """
     # Get CRON_SECRET from environment
@@ -610,9 +616,19 @@ def cron_pull_feeds(x_cron_secret: str = Header(..., alias="X-Cron-Secret")):
     if not cron_secret:
         raise HTTPException(status_code=500, detail={"error": "CRON_SECRET not configured"})
     
+    # Extract secret from Authorization header if present (Bearer <secret>)
+    provided_secret = None
+    if authorization and authorization.startswith("Bearer "):
+        provided_secret = authorization[7:].strip()
+    elif x_cron_secret:
+        provided_secret = x_cron_secret
+    
+    if not provided_secret:
+        raise HTTPException(status_code=403, detail={"error": "Missing authentication header"})
+    
     # Verify secret (constant-time comparison to prevent timing attacks)
     import hmac
-    if not hmac.compare_digest(x_cron_secret, cron_secret):
+    if not hmac.compare_digest(provided_secret, cron_secret):
         raise HTTPException(status_code=403, detail={"error": "Invalid CRON_SECRET"})
     
     try:

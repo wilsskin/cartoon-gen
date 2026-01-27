@@ -5,8 +5,10 @@ import CanvasMeme from '../components/CanvasMeme';
 import arrowBack from '../assets/images/arrow-back.svg';
 import actionIcons from '../assets/images/action-icons.svg';
 
-// Use environment variable for API URL, fallback to localhost for development
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+// API base URL: relative in production, localhost in dev
+// In production (Vercel), frontend calls relative /api/* routes on the same domain
+// In local dev, frontend uses http://localhost:8000
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? '' : 'http://localhost:8000');
 
 const GenerationPage = ({ selectedNews }) => {
   const navigate = useNavigate();
