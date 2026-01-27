@@ -136,8 +136,12 @@ def insert_items(db: Session, feed_id: str, entries: List[Dict],
     """
     Insert RSS items into database.
     Returns count of items inserted (excluding duplicates).
+    
+    Note: fetched_at is set to now() for new inserts, but NOT updated on conflicts.
+    This means existing items keep their old fetched_at timestamp.
     """
     inserted = 0
+    updated = 0
     
     for entry in entries[:max_items]:
         # Extract entry data
@@ -158,6 +162,7 @@ def insert_items(db: Session, feed_id: str, entries: List[Dict],
         try:
             # Upsert: insert new rows, or update category for existing rows
             # (so previously-stored "general"/RSS tags get replaced after this change).
+            # Note: fetched_at is NOT updated on conflict, so existing items keep old timestamp.
             result = db.execute(
                 text("""
                     INSERT INTO items (feed_id, title, summary, url, published_at, category)
@@ -167,7 +172,7 @@ def insert_items(db: Session, feed_id: str, entries: List[Dict],
                         title = COALESCE(EXCLUDED.title, items.title),
                         summary = COALESCE(EXCLUDED.summary, items.summary),
                         published_at = COALESCE(EXCLUDED.published_at, items.published_at)
-                    RETURNING id
+                    RETURNING id, fetched_at
                 """),
                 {
                     "feed_id": feed_id,
@@ -178,12 +183,29 @@ def insert_items(db: Session, feed_id: str, entries: List[Dict],
                     "category": category,
                 }
             )
-            if result.fetchone():
-                inserted += 1
+            row = result.fetchone()
+            if row:
+                # Check if this was a new insert (fetched_at is recent) or an update (old fetched_at)
+                fetched_at = row[1]
+                if fetched_at:
+                    # If fetched_at is within last minute, it's likely a new insert
+                    from datetime import timedelta, timezone
+                    now_utc = datetime.now(timezone.utc)
+                    if fetched_at > now_utc - timedelta(minutes=1):
+                        inserted += 1
+                    else:
+                        updated += 1
+                else:
+                    inserted += 1
         except Exception as e:
             # Log but continue
             print(f"Error inserting item for feed {feed_id}: {e}")
             continue
+    
+    if updated > 0:
+        print(f"INGEST: Feed {feed_id}: {inserted} new items, {updated} existing items (fetched_at not updated)")
+    else:
+        print(f"INGEST: Feed {feed_id}: {inserted} items inserted")
     
     return inserted
 
@@ -261,6 +283,11 @@ def process_feed(db: Session, feed_data: Dict, defaults: Dict, run_id: str) -> D
             inserted = insert_items(db, feed_id, feed.entries, category_default, max_items)
             result["inserted"] = inserted
             
+            # Get current timestamp for logging
+            from datetime import timezone
+            current_timestamp = datetime.now(timezone.utc)
+            print(f"INGEST: Feed {feed_id} processed: {inserted} items, fetched_at will be ~{current_timestamp.isoformat()}")
+            
             # Update feed metadata
             update_feed_metadata(db, feed_id, etag, last_modified)
             db.commit()
@@ -311,6 +338,7 @@ def run_rss_ingest() -> Dict[str, Any]:
     items_inserted = 0
     
     # Process each feed
+    print(f"INGEST: Starting ingestion run {run_id}: {total_feeds} feeds to process")
     with Session(engine) as db:
         for feed_data in enabled_feeds:
             result = process_feed(db, feed_data, defaults, run_id)
@@ -318,6 +346,7 @@ def run_rss_ingest() -> Dict[str, Any]:
             if result["error"]:
                 # Record error
                 feeds_failed += 1
+                print(f"INGEST: Feed {result['feed_id']} failed: {result['error']} (HTTP {result.get('http_status', 'N/A')})")
                 db.execute(
                     text("""
                         INSERT INTO feed_run_errors 
@@ -335,8 +364,12 @@ def run_rss_ingest() -> Dict[str, Any]:
             else:
                 feeds_succeeded += 1
                 items_inserted += result["inserted"]
+                if result.get("http_status") == 304:
+                    print(f"INGEST: Feed {result['feed_id']} not modified (304), skipped")
             
             db.commit()
+    
+    print(f"INGEST: Run {run_id} completed: {feeds_succeeded} succeeded, {feeds_failed} failed, {items_inserted} items inserted")
     
     # Determine final status
     status = "success" if feeds_failed == 0 else "partial"
