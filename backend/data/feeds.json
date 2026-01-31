@@ -3,7 +3,7 @@
   "defaults": {
     "enabled": true,
     "timeoutSeconds": 10,
-    "maxItemsPerFeed": 5
+    "maxItemsPerFeed": 3
   },
   "feeds": [
     {

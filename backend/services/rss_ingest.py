@@ -136,10 +136,11 @@ def insert_items(db: Session, feed_id: str, entries: List[Dict],
                 category_default: Optional[str], max_items: int) -> int:
     """
     Insert RSS items into database.
-    Returns count of items inserted (excluding duplicates).
+    Returns count of items inserted or updated.
     
-    Note: fetched_at is set to now() for new inserts, but NOT updated on conflicts.
-    This means existing items keep their old fetched_at timestamp.
+    Both new inserts and conflict updates set fetched_at = now(), so re-fetched
+    items appear as "today" in /api/news. Duplicate headlines from different feeds
+    are kept (different phrasing on same story).
     """
     inserted = 0
     updated = 0
@@ -163,7 +164,7 @@ def insert_items(db: Session, feed_id: str, entries: List[Dict],
         try:
             # Upsert: insert new rows, or update category for existing rows
             # (so previously-stored "general"/RSS tags get replaced after this change).
-            # Note: fetched_at is NOT updated on conflict, so existing items keep old timestamp.
+            # Update fetched_at on conflict so re-fetched items show as "today" in /api/news
             result = db.execute(
                 text("""
                     INSERT INTO items (feed_id, title, summary, url, published_at, category)
@@ -172,7 +173,8 @@ def insert_items(db: Session, feed_id: str, entries: List[Dict],
                         category = EXCLUDED.category,
                         title = COALESCE(EXCLUDED.title, items.title),
                         summary = COALESCE(EXCLUDED.summary, items.summary),
-                        published_at = COALESCE(EXCLUDED.published_at, items.published_at)
+                        published_at = COALESCE(EXCLUDED.published_at, items.published_at),
+                        fetched_at = now()
                     RETURNING id, fetched_at
                 """),
                 {
@@ -204,7 +206,7 @@ def insert_items(db: Session, feed_id: str, entries: List[Dict],
             continue
     
     if updated > 0:
-        print(f"INGEST: Feed {feed_id}: {inserted} new items, {updated} existing items (fetched_at not updated)")
+        print(f"INGEST: Feed {feed_id}: {inserted} new items, {updated} existing items refreshed")
     else:
         print(f"INGEST: Feed {feed_id}: {inserted} items inserted")
     

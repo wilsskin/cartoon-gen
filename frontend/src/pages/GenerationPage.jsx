@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import CanvasMeme from '../components/CanvasMeme';
@@ -15,6 +15,7 @@ const GenerationPage = ({ selectedNews }) => {
   const [currentImageUrl, setCurrentImageUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const lastHeadlineIdRef = useRef(null);
 
   useEffect(() => {
     // Redirect to home if no news is selected
@@ -23,8 +24,14 @@ const GenerationPage = ({ selectedNews }) => {
       return;
     }
 
-    // Set the initial image
-    setCurrentImageUrl(`${API_BASE_URL}${selectedNews.initialImageUrl}`);
+    // Set the initial image (empty for RSS items)
+    setCurrentImageUrl(selectedNews.initialImageUrl ? `${API_BASE_URL}${selectedNews.initialImageUrl}` : '');
+
+    // Auto-generate cartoon when user lands after clicking a headline
+    if (lastHeadlineIdRef.current !== selectedNews.id) {
+      lastHeadlineIdRef.current = selectedNews.id;
+      handleGenerateImage('Default');
+    }
   }, [selectedNews, navigate]);
 
   const handleGenerateImage = (style) => {
@@ -34,7 +41,7 @@ const GenerationPage = ({ selectedNews }) => {
     setError('');
 
     axios.post(`${API_BASE_URL}/api/generate-image`, {
-      basePrompt: selectedNews.basePrompt,
+      headlineId: selectedNews.id,
       style: style,
     })
     .then(response => {
