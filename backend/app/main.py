@@ -386,7 +386,7 @@ def _lookup_headline_by_id(headline_id: str, db: Session) -> dict:
     if not is_uuid and ALLOW_STATIC_NEWS_FALLBACK:
         try:
             headline_id_int = int(headline_id)
-            data_file_path = BASE_DIR.parent / "data" / "news.json"
+            data_file_path = (Path(__file__).resolve().parent.parent / "data" / "news.json").resolve()
             with open(data_file_path, "r") as f:
                 static_data = json.load(f)
             

@@ -29,8 +29,9 @@ from db import engine
 
 
 def load_feeds_config() -> Dict[str, Any]:
-    """Load feeds configuration from backend/data/feeds.json"""
-    feeds_file = backend_path / "data" / "feeds.json"
+    """Load feeds configuration from backend/data/feeds.json.
+    Uses Path(__file__).resolve() for serverless-safe absolute path resolution."""
+    feeds_file = Path(__file__).resolve().parent.parent / "data" / "feeds.json"
     with open(feeds_file, "r") as f:
         return json.load(f)
 
