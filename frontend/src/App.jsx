@@ -17,7 +17,8 @@ function App() {
 
   useEffect(() => {
     // Fetch the initial list of news headlines on component mount
-    axios.get(`${API_BASE_URL}/api/news`)
+    const newsUrl = `${API_BASE_URL}/api/news`;
+    axios.get(newsUrl)
       .then(response => {
         console.log('News items fetched:', response.data);
         console.log('Number of items:', response.data?.length || 0);
@@ -28,10 +29,15 @@ function App() {
         }
       })
       .catch(err => {
-        console.error("Failed to fetch news:", err);
-        console.error("Error details:", err.response?.data || err.message);
+        const status = err.response?.status;
+        const statusText = err.response?.statusText;
         const errorMsg = err.response?.data?.detail || err.message || 'Unknown error';
-        setError(`Could not connect to backend: ${errorMsg}. Make sure backend is running on ${API_BASE_URL}`);
+        console.error("Failed to fetch news:", { url: newsUrl, status, statusText, error: err });
+        setError(
+          `Could not connect to backend: ${errorMsg}. ` +
+          `Request: GET ${newsUrl} → ${status || 'network error'}${statusText ? ` ${statusText}` : ''}. ` +
+          `Make sure backend is running on ${API_BASE_URL || 'same origin'}.`
+        );
         setNewsItems([]); // Ensure it's empty on error
       });
   }, []);
