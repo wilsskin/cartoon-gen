@@ -5,6 +5,23 @@ import CanvasMeme from '../components/CanvasMeme';
 import arrowBack from '../assets/images/arrow-back.svg';
 import actionIcons from '../assets/images/action-icons.svg';
 
+// News source logos
+import cnnLogo from '../assets/images/cnn.svg';
+import foxLogo from '../assets/images/fox-us.svg';
+import nbcLogo from '../assets/images/nbc.svg';
+import nytLogo from '../assets/images/nyt.svg';
+import nprLogo from '../assets/images/npr.svg';
+import wsjLogo from '../assets/images/wsj-logo.png';
+
+const FEED_LOGOS = {
+  cnn_top: cnnLogo,
+  fox_us: foxLogo,
+  nbc_top: nbcLogo,
+  nyt_home: nytLogo,
+  npr_news: nprLogo,
+  wsj_world: wsjLogo,
+};
+
 // API base URL: relative in production, localhost in dev
 // In production (Vercel), frontend calls relative /api/* routes on the same domain
 // In local dev, frontend uses http://localhost:8000
@@ -87,10 +104,29 @@ const GenerationPage = ({ selectedNews }) => {
             />
           </div>
 
+          {/* Source Logo */}
+          <div className="generation-source">
+            <a
+              href={selectedNews.sourceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="generation-source-link"
+            >
+              <img
+                src={FEED_LOGOS[selectedNews.feedId] || wsjLogo}
+                alt={selectedNews.category || 'News source'}
+                className="generation-source-logo"
+              />
+              <span className="generation-source-name">{selectedNews.category}</span>
+            </a>
+          </div>
+
           {/* Text Content */}
           <div className="generation-text-content">
             <h2 className="generation-headline">{selectedNews.headline}</h2>
-            <p className="generation-subtext">This is subtext and more about the headline the person selected</p>
+            {selectedNews.summary && (
+              <p className="generation-subtext">{selectedNews.summary}</p>
+            )}
           </div>
 
           {/* Action Icons */}
