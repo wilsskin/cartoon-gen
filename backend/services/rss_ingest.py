@@ -31,6 +31,11 @@ from db import engine
 MAX_WORKERS = 6  # Fetch all feeds concurrently
 FETCH_TIMEOUT = 5  # Aggressive timeout per feed (seconds)
 
+# Data retention configuration
+ITEMS_RETENTION_DAYS = 7    # Keep news items for 7 days
+RUNS_RETENTION_DAYS = 30    # Keep run logs for 30 days
+ERRORS_RETENTION_DAYS = 30  # Keep error logs for 30 days
+
 
 def load_feeds_config() -> Dict[str, Any]:
     """Load feeds configuration from backend/data/feeds.json.
@@ -194,6 +199,64 @@ def fetch_rss_feed(url: str, timeout: int, etag: Optional[str] = None,
     
     response = requests.get(url, headers=headers, timeout=timeout)
     return response
+
+
+def cleanup_old_data() -> Dict[str, int]:
+    """
+    Delete old data to prevent database bloat.
+    
+    Retention periods:
+    - items: 7 days (news headlines)
+    - runs: 30 days (cron execution logs)
+    - feed_run_errors: 30 days (error logs)
+    
+    Returns dict with counts of deleted rows per table.
+    """
+    deleted = {"items": 0, "runs": 0, "feed_run_errors": 0}
+    
+    with engine.begin() as conn:
+        # Delete old items (news headlines older than 7 days)
+        result = conn.execute(
+            text("""
+                DELETE FROM items
+                WHERE fetched_at < now() - INTERVAL :days
+                RETURNING id
+            """),
+            {"days": f"{ITEMS_RETENTION_DAYS} days"}
+        )
+        deleted["items"] = result.rowcount
+        
+        # Delete old feed_run_errors first (foreign key to runs)
+        result = conn.execute(
+            text("""
+                DELETE FROM feed_run_errors
+                WHERE created_at < now() - INTERVAL :days
+                RETURNING id
+            """),
+            {"days": f"{ERRORS_RETENTION_DAYS} days"}
+        )
+        deleted["feed_run_errors"] = result.rowcount
+        
+        # Delete old runs (cron execution logs older than 30 days)
+        result = conn.execute(
+            text("""
+                DELETE FROM runs
+                WHERE started_at < now() - INTERVAL :days
+                RETURNING id
+            """),
+            {"days": f"{RUNS_RETENTION_DAYS} days"}
+        )
+        deleted["runs"] = result.rowcount
+    
+    total = sum(deleted.values())
+    if total > 0:
+        print(f"CLEANUP: Deleted {deleted['items']} items, {deleted['runs']} runs, "
+              f"{deleted['feed_run_errors']} errors (retention: items={ITEMS_RETENTION_DAYS}d, "
+              f"runs/errors={RUNS_RETENTION_DAYS}d)")
+    else:
+        print("CLEANUP: No old data to delete")
+    
+    return deleted
 
 
 def fetch_feed_parallel(feed_data: Dict, metadata: Dict[str, Optional[str]], 
@@ -513,10 +576,24 @@ def run_rss_ingest() -> Dict[str, Any]:
             }
         )
     
+    # ========== PHASE 4: Cleanup old data ==========
+    try:
+        cleanup_result = cleanup_old_data()
+        items_deleted = cleanup_result.get("items", 0)
+    except Exception as e:
+        # Don't fail the whole run if cleanup fails
+        print(f"CLEANUP: Warning - cleanup failed: {e}")
+        items_deleted = 0
+    
+    cleanup_time = datetime.now(tz.utc)
+    total_ms = int((cleanup_time - start_time).total_seconds() * 1000)
+    print(f"INGEST: Total run completed in {total_ms}ms (including cleanup)")
+    
     return {
         "run_id": run_id,
         "status": status,
         "items_inserted": items_inserted,
+        "items_deleted": items_deleted,
         "feeds_failed": feeds_failed,
         "feeds_succeeded": feeds_succeeded,
         "total_feeds": total_feeds,

@@ -109,6 +109,18 @@ Configure in **Project Settings → Environment Variables** for Production (and 
 
 The cron fetches RSS feeds from `backend/data/feeds.json`, upserts items into the database, and updates `fetched_at` so `/api/news` returns today's headlines.
 
+### Data Retention (Auto-Cleanup)
+
+The cron job automatically cleans up old data to prevent database bloat:
+
+| Table | Retention | Purpose |
+|-------|-----------|---------|
+| `items` | 7 days | News headlines (only "today" shown in UI) |
+| `runs` | 30 days | Cron execution logs for debugging |
+| `feed_run_errors` | 30 days | Error logs for debugging |
+
+Cleanup runs at the end of each cron execution and is non-blocking (failures don't affect ingestion).
+
 ---
 
 ## API Endpoints

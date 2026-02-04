@@ -4,10 +4,10 @@ import cgLogo from '../assets/images/cg-logo.png';
 const Header = () => {
   const navigate = useNavigate();
 
-  // Get current date and format it as "Friday, October 10th"
+  // Get current date and format it as "Saturday, January 31" (ensure space after comma)
   const currentDate = new Date();
   const options = { weekday: 'long', month: 'long', day: 'numeric' };
-  const formattedDate = currentDate.toLocaleDateString('en-US', options);
+  const formattedDate = currentDate.toLocaleDateString('en-US', options).replace(/,(?=\S)/, ', ');
 
   return (
     <header className="header">

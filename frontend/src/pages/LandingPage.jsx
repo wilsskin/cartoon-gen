@@ -2,12 +2,25 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import filterIcon from '../assets/images/filter-icon.svg';
 import arrowDownIcon from '../assets/images/arrow-down.svg';
+import cnnLogo from '../assets/images/cnn.svg';
+import foxLogo from '../assets/images/fox-us.svg';
+import nbcLogo from '../assets/images/nbc.svg';
+import nytLogo from '../assets/images/nyt.svg';
+import nprLogo from '../assets/images/npr.svg';
 import wsjLogo from '../assets/images/wsj-logo.png';
+
+const FEED_LOGOS = {
+  cnn_top: cnnLogo,
+  fox_us: foxLogo,
+  nbc_top: nbcLogo,
+  nyt_home: nytLogo,
+  npr_news: nprLogo,
+  wsj_world: wsjLogo,
+};
 
 const LandingPage = ({ newsItems, selectedNews, setSelectedNews }) => {
   const [showAll, setShowAll] = useState(false);
   const navigate = useNavigate();
-  const allowedCategories = new Set(['World', 'Politics', 'Business', 'Technology', 'Culture']);
 
   const visibleHeadlines = showAll ? newsItems : newsItems.slice(0, 5);
 
@@ -70,10 +83,15 @@ const LandingPage = ({ newsItems, selectedNews, setSelectedNews }) => {
                     >
                       {item.headline}
                     </h3>
-                    <div className="news-item-meta">
-                      <img src={wsjLogo} alt="" className="news-item-logo" width="17.78" height="10" />
-                      <span className="news-item-category">· {allowedCategories.has(item.category) ? item.category : 'Culture'}</span>
-                    </div>
+                    <a
+                      href={item.sourceUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="news-item-meta"
+                    >
+                      <img src={FEED_LOGOS[item.feedId] || wsjLogo} alt="" className="news-item-logo" />
+                      <span className="news-item-category">{item.category}</span>
+                    </a>
                   </div>
                 </div>
               ))
