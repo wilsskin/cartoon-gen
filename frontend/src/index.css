@@ -476,6 +476,19 @@ body {
   border-radius: 0;
 }
 
+/* Article Link - wraps logo, headline, description */
+.generation-article-link {
+  display: flex;
+  flex-direction: column;
+  text-decoration: none;
+  color: inherit;
+  transition: opacity 0.15s ease;
+}
+
+.generation-article-link:hover {
+  opacity: 0.8;
+}
+
 /* Source Logo (above headline) */
 .generation-source {
   display: flex;
@@ -483,33 +496,12 @@ body {
   padding: 16px 0 0;
 }
 
-.generation-source-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  text-decoration: none;
-  color: inherit;
-  transition: opacity 0.15s ease;
-}
-
-.generation-source-link:hover {
-  opacity: 0.7;
-}
-
 .generation-source-logo {
   display: block;
   max-width: 20px;
   max-height: 16px;
   object-fit: contain;
-  opacity: 0.6;
-}
-
-.generation-source-name {
-  font-family: 'Crimson Text', Georgia, serif;
-  font-size: 14px;
-  font-weight: 400;
-  line-height: 1.33;
-  color: #767676;
+  opacity: 0.7;
 }
 
 /* Text Content */

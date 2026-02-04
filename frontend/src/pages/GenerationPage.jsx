@@ -104,30 +104,30 @@ const GenerationPage = ({ selectedNews }) => {
             />
           </div>
 
-          {/* Source Logo */}
-          <div className="generation-source">
-            <a
-              href={selectedNews.sourceUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="generation-source-link"
-            >
+          {/* Article Link - wraps logo, headline, and description */}
+          <a
+            href={selectedNews.sourceUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="generation-article-link"
+          >
+            {/* Source Logo */}
+            <div className="generation-source">
               <img
                 src={FEED_LOGOS[selectedNews.feedId] || wsjLogo}
                 alt={selectedNews.category || 'News source'}
                 className="generation-source-logo"
               />
-              <span className="generation-source-name">{selectedNews.category}</span>
-            </a>
-          </div>
+            </div>
 
-          {/* Text Content */}
-          <div className="generation-text-content">
-            <h2 className="generation-headline">{selectedNews.headline}</h2>
-            {selectedNews.summary && (
-              <p className="generation-subtext">{selectedNews.summary}</p>
-            )}
-          </div>
+            {/* Text Content */}
+            <div className="generation-text-content">
+              <h2 className="generation-headline">{selectedNews.headline}</h2>
+              {selectedNews.summary && (
+                <p className="generation-subtext">{selectedNews.summary}</p>
+              )}
+            </div>
+          </a>
 
           {/* Action Icons */}
           <div className="generation-actions">
