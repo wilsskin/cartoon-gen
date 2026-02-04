@@ -2,7 +2,7 @@
   "version": "1.0.0",
   "defaults": {
     "enabled": true,
-    "timeoutSeconds": 10,
+    "timeoutSeconds": 5,
     "maxItemsPerFeed": 3
   },
   "feeds": [

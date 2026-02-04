@@ -3,13 +3,16 @@ RSS ingestion service for fetching and storing RSS feed items.
 
 This service reads feed configuration from backend/data/feeds.json,
 fetches RSS feeds, and stores items in the database.
+
+Optimized for Vercel Hobby plan (10 second timeout) using parallel feed fetching.
 """
 
 import json
 import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from datetime import datetime
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Tuple
 from uuid import uuid4
 
 import feedparser
@@ -17,15 +20,16 @@ import requests
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-# Deterministic category classification (no AI/external APIs)
-from .classify_category import classify_category
-
 # Add backend directory to path for imports
 backend_path = Path(__file__).resolve().parent.parent
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
 from db import engine
+
+# Parallel fetching configuration for Vercel Hobby plan (10s timeout)
+MAX_WORKERS = 6  # Fetch all feeds concurrently
+FETCH_TIMEOUT = 5  # Aggressive timeout per feed (seconds)
 
 
 def load_feeds_config() -> Dict[str, Any]:
@@ -50,31 +54,6 @@ def parse_published_date(entry: Any) -> Optional[datetime]:
     except Exception:
         pass
     return None
-
-
-def extract_category(entry: Dict, feed_category_default: Optional[str]) -> Optional[str]:
-    """
-    Extract category from RSS entry.
-    Prefers entry tags/category, falls back to feed category_default.
-    """
-    # Check for tags/categories in entry
-    if hasattr(entry, 'tags') and entry.tags:
-        # Get first tag value
-        tag = entry.tags[0]
-        if hasattr(tag, 'term'):
-            return tag.term
-        elif isinstance(tag, dict) and 'term' in tag:
-            return tag['term']
-    
-    # Check for category field
-    if hasattr(entry, 'category'):
-        if isinstance(entry.category, str):
-            return entry.category
-        elif isinstance(entry.category, list) and entry.category:
-            return entry.category[0]
-    
-    # Fall back to feed default
-    return feed_category_default
 
 
 def upsert_feed(db: Session, feed_data: Dict) -> None:
@@ -132,8 +111,7 @@ def get_feed_metadata(db: Session, feed_id: str) -> Dict[str, Optional[str]]:
     return {"etag": None, "last_modified": None}
 
 
-def insert_items(db: Session, feed_id: str, entries: List[Dict], 
-                category_default: Optional[str], max_items: int) -> int:
+def insert_items(db: Session, feed_id: str, entries: List[Dict], max_items: int) -> int:
     """
     Insert RSS items into database.
     Returns count of items inserted or updated.
@@ -151,26 +129,19 @@ def insert_items(db: Session, feed_id: str, entries: List[Dict],
         link = getattr(entry, 'link', '') or ''
         summary = getattr(entry, 'summary', '') or getattr(entry, 'description', '') or None
         published = parse_published_date(entry)
-        # Option B: include RSS entry tag/category as extra signal (but never store raw tags)
-        rss_tag = extract_category(entry, None)
-        classifier_subtext = summary or ""
-        if rss_tag:
-            classifier_subtext = f"{classifier_subtext} {rss_tag}".strip()
-        category = classify_category(title, classifier_subtext)
-        
+        # Category no longer used; display tag is derived from feed_id in API
         if not title or not link:
             continue
         
         try:
-            # Upsert: insert new rows, or update category for existing rows
-            # (so previously-stored "general"/RSS tags get replaced after this change).
+            # Upsert: insert new rows, or update existing rows.
             # Update fetched_at on conflict so re-fetched items show as "today" in /api/news
+            # Category column left NULL; display tag is derived from feed_id in API
             result = db.execute(
                 text("""
                     INSERT INTO items (feed_id, title, summary, url, published_at, category)
-                    VALUES (:feed_id, :title, :summary, :url, :published_at, :category)
+                    VALUES (:feed_id, :title, :summary, :url, :published_at, NULL)
                     ON CONFLICT (feed_id, url) DO UPDATE SET
-                        category = EXCLUDED.category,
                         title = COALESCE(EXCLUDED.title, items.title),
                         summary = COALESCE(EXCLUDED.summary, items.summary),
                         published_at = COALESCE(EXCLUDED.published_at, items.published_at),
@@ -183,7 +154,6 @@ def insert_items(db: Session, feed_id: str, entries: List[Dict],
                     "summary": summary,
                     "url": link,
                     "published_at": published,
-                    "category": category,
                 }
             )
             row = result.fetchone()
@@ -226,6 +196,31 @@ def fetch_rss_feed(url: str, timeout: int, etag: Optional[str] = None,
     return response
 
 
+def fetch_feed_parallel(feed_data: Dict, metadata: Dict[str, Optional[str]], 
+                        timeout: int) -> Tuple[str, Optional[requests.Response], Optional[str]]:
+    """
+    Fetch a single RSS feed (designed for parallel execution).
+    
+    Returns tuple of (feed_id, response, error_message).
+    Response is None if error occurred.
+    """
+    feed_id = feed_data["id"]
+    feed_url = feed_data["url"]
+    
+    try:
+        response = fetch_rss_feed(
+            feed_url,
+            timeout,
+            etag=metadata.get("etag"),
+            last_modified=metadata.get("last_modified")
+        )
+        return (feed_id, response, None)
+    except requests.exceptions.Timeout:
+        return (feed_id, None, "Request timeout")
+    except requests.exceptions.RequestException as e:
+        return (feed_id, None, str(e))
+
+
 def process_feed(db: Session, feed_data: Dict, defaults: Dict, run_id: str) -> Dict[str, Any]:
     """
     Process a single feed: fetch, parse, and store items.
@@ -233,7 +228,6 @@ def process_feed(db: Session, feed_data: Dict, defaults: Dict, run_id: str) -> D
     """
     feed_id = feed_data["id"]
     feed_url = feed_data["url"]
-    category_default = feed_data.get("category")
     timeout = defaults.get("timeoutSeconds", 10)
     max_items = defaults.get("maxItemsPerFeed", 5)
     
@@ -283,7 +277,7 @@ def process_feed(db: Session, feed_data: Dict, defaults: Dict, run_id: str) -> D
             last_modified = response.headers.get('Last-Modified')
             
             # Insert items
-            inserted = insert_items(db, feed_id, feed.entries, category_default, max_items)
+            inserted = insert_items(db, feed_id, feed.entries, max_items)
             result["inserted"] = inserted
             
             # Get current timestamp for logging
@@ -314,12 +308,25 @@ def process_feed(db: Session, feed_data: Dict, defaults: Dict, run_id: str) -> D
 
 def run_rss_ingest() -> Dict[str, Any]:
     """
-    Main RSS ingestion function.
+    Main RSS ingestion function with parallel feed fetching.
+    
+    Optimized for Vercel Hobby plan (10 second timeout):
+    - Phase 1: Prepare feeds and collect metadata (fast, sequential)
+    - Phase 2: Fetch all RSS feeds in parallel (slow network I/O, parallelized)
+    - Phase 3: Process results and insert items (fast, sequential)
+    
     Returns summary dict with run_id, status, items_inserted, feeds_failed.
     """
+    from datetime import timezone as tz
+    start_time = datetime.now(tz.utc)
+    
     config = load_feeds_config()
     defaults = config.get("defaults", {})
     feeds = config.get("feeds", [])
+    
+    # Use aggressive timeout for Hobby plan, but allow config override
+    timeout = min(defaults.get("timeoutSeconds", FETCH_TIMEOUT), FETCH_TIMEOUT)
+    max_items = defaults.get("maxItemsPerFeed", 3)
     
     # Filter enabled feeds
     enabled_feeds = [f for f in feeds if f.get("enabled", defaults.get("enabled", True))]
@@ -336,20 +343,65 @@ def run_rss_ingest() -> Dict[str, Any]:
             {"id": run_id, "total_feeds": total_feeds}
         )
     
+    print(f"INGEST: Starting parallel ingestion run {run_id}: {total_feeds} feeds, timeout={timeout}s")
+    
+    # ========== PHASE 1: Prepare feeds and collect metadata ==========
+    feed_metadata = {}
+    with Session(engine) as db:
+        for feed_data in enabled_feeds:
+            upsert_feed(db, feed_data)
+            feed_metadata[feed_data["id"]] = get_feed_metadata(db, feed_data["id"])
+        db.commit()
+    
+    phase1_time = datetime.now(tz.utc)
+    print(f"INGEST: Phase 1 (prepare) completed in {int((phase1_time - start_time).total_seconds() * 1000)}ms")
+    
+    # ========== PHASE 2: Fetch all feeds in parallel ==========
+    fetch_results = {}  # feed_id -> (response, error)
+    
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        # Submit all fetch tasks
+        future_to_feed = {
+            executor.submit(
+                fetch_feed_parallel,
+                feed_data,
+                feed_metadata.get(feed_data["id"], {}),
+                timeout
+            ): feed_data["id"]
+            for feed_data in enabled_feeds
+        }
+        
+        # Collect results as they complete
+        for future in as_completed(future_to_feed):
+            feed_id, response, error = future.result()
+            fetch_results[feed_id] = (response, error)
+    
+    phase2_time = datetime.now(tz.utc)
+    print(f"INGEST: Phase 2 (parallel fetch) completed in {int((phase2_time - phase1_time).total_seconds() * 1000)}ms")
+    
+    # ========== PHASE 3: Process results and insert items ==========
     feeds_succeeded = 0
     feeds_failed = 0
     items_inserted = 0
     
-    # Process each feed
-    print(f"INGEST: Starting ingestion run {run_id}: {total_feeds} feeds to process")
     with Session(engine) as db:
         for feed_data in enabled_feeds:
-            result = process_feed(db, feed_data, defaults, run_id)
+            feed_id = feed_data["id"]
+            response, error = fetch_results.get(feed_id, (None, "No fetch result"))
+            metadata = feed_metadata.get(feed_id, {})
             
-            if result["error"]:
-                # Record error
+            result = {
+                "feed_id": feed_id,
+                "inserted": 0,
+                "error": error,
+                "error_type": "http_error" if error else None,
+                "http_status": response.status_code if response else None,
+            }
+            
+            if error:
+                # Fetch failed
                 feeds_failed += 1
-                print(f"INGEST: Feed {result['feed_id']} failed: {result['error']} (HTTP {result.get('http_status', 'N/A')})")
+                print(f"INGEST: Feed {feed_id} failed: {error}")
                 db.execute(
                     text("""
                         INSERT INTO feed_run_errors 
@@ -358,21 +410,84 @@ def run_rss_ingest() -> Dict[str, Any]:
                     """),
                     {
                         "run_id": run_id,
-                        "feed_id": result["feed_id"],
-                        "error_type": result["error_type"],
-                        "error_message": result["error"],
-                        "http_status": result["http_status"],
+                        "feed_id": feed_id,
+                        "error_type": "http_error",
+                        "error_message": error,
+                        "http_status": None,
                     }
                 )
-            else:
+            elif response.status_code == 304:
+                # Not modified - update last_fetched_at only
                 feeds_succeeded += 1
-                items_inserted += result["inserted"]
-                if result.get("http_status") == 304:
-                    print(f"INGEST: Feed {result['feed_id']} not modified (304), skipped")
-            
-            db.commit()
+                update_feed_metadata(db, feed_id, metadata.get("etag"), metadata.get("last_modified"))
+                print(f"INGEST: Feed {feed_id} not modified (304), skipped")
+            elif response.status_code == 200:
+                # Success - parse and insert
+                try:
+                    feed = feedparser.parse(response.content)
+                    
+                    if feed.bozo and feed.bozo_exception:
+                        raise Exception(f"RSS parse error: {feed.bozo_exception}")
+                    
+                    # Extract headers
+                    etag = response.headers.get('ETag')
+                    last_modified = response.headers.get('Last-Modified')
+                    
+                    # Insert items
+                    inserted = insert_items(db, feed_id, feed.entries, max_items)
+                    result["inserted"] = inserted
+                    items_inserted += inserted
+                    feeds_succeeded += 1
+                    
+                    # Update feed metadata
+                    update_feed_metadata(db, feed_id, etag, last_modified)
+                    print(f"INGEST: Feed {feed_id} processed: {inserted} items")
+                    
+                except Exception as e:
+                    feeds_failed += 1
+                    error_msg = str(e)
+                    print(f"INGEST: Feed {feed_id} parse error: {error_msg}")
+                    db.execute(
+                        text("""
+                            INSERT INTO feed_run_errors 
+                            (run_id, feed_id, error_type, error_message, http_status)
+                            VALUES (:run_id, :feed_id, :error_type, :error_message, :http_status)
+                        """),
+                        {
+                            "run_id": run_id,
+                            "feed_id": feed_id,
+                            "error_type": "parse_error",
+                            "error_message": error_msg,
+                            "http_status": 200,
+                        }
+                    )
+            else:
+                # Unexpected HTTP status
+                feeds_failed += 1
+                error_msg = f"HTTP {response.status_code}: {response.reason}"
+                print(f"INGEST: Feed {feed_id} failed: {error_msg}")
+                db.execute(
+                    text("""
+                        INSERT INTO feed_run_errors 
+                        (run_id, feed_id, error_type, error_message, http_status)
+                        VALUES (:run_id, :feed_id, :error_type, :error_message, :http_status)
+                    """),
+                    {
+                        "run_id": run_id,
+                        "feed_id": feed_id,
+                        "error_type": "http_error",
+                        "error_message": error_msg,
+                        "http_status": response.status_code,
+                    }
+                )
+        
+        db.commit()
     
-    print(f"INGEST: Run {run_id} completed: {feeds_succeeded} succeeded, {feeds_failed} failed, {items_inserted} items inserted")
+    end_time = datetime.now(tz.utc)
+    total_ms = int((end_time - start_time).total_seconds() * 1000)
+    
+    print(f"INGEST: Run {run_id} completed in {total_ms}ms: "
+          f"{feeds_succeeded} succeeded, {feeds_failed} failed, {items_inserted} items inserted")
     
     # Determine final status
     status = "success" if feeds_failed == 0 else "partial"
@@ -405,4 +520,5 @@ def run_rss_ingest() -> Dict[str, Any]:
         "feeds_failed": feeds_failed,
         "feeds_succeeded": feeds_succeeded,
         "total_feeds": total_feeds,
+        "duration_ms": total_ms,
     }

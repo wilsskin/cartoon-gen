@@ -85,7 +85,6 @@ if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 from db import get_db
 from services.rss_ingest import run_rss_ingest
-from services.classify_category import classify_category
 
 # Define the base directory of the backend
 BASE_DIR = Path(__file__).resolve().parent
@@ -134,8 +133,15 @@ class ImageRequest(BaseModel):
 # Maximum number of news items to return from database
 MAX_NEWS_ITEMS = 30
 
-# Only categories we allow clients to see.
-ALLOWED_CATEGORIES = {"World", "Politics", "Business", "Technology", "Culture"}
+# Feed ID -> display tag shown next to each headline (RSS source)
+FEED_DISPLAY_TAGS = {
+    "cnn_top": "CNN",
+    "fox_us": "FOX",
+    "nbc_top": "NBC",
+    "nyt_home": "NYT",
+    "npr_news": "NPR",
+    "wsj_world": "WSJ",
+}
 
 # Style allowlist for image generation
 ALLOWED_STYLES = ["Default", "Funnier", "Drier", "More sarcastic", "More wholesome"]
@@ -196,8 +202,8 @@ def get_news(db: Session = Depends(get_db)):
     The database comparison uses UTC boundaries converted from Pacific Time.
     
     Maintains the existing frontend response contract:
-    - Array of objects with: id (UUID string for DB items, numeric for static), headline, summary, sourceName, sourceUrl, 
-      pregeneratedCaption, basePrompt, initialImageUrl, category
+    - Array of objects with: id, feedId (for logo mapping), headline, summary, sourceName, sourceUrl, 
+      pregeneratedCaption, basePrompt, initialImageUrl, category (feed display tag: CNN Top, Fox US, etc.)
     """
     try:
         today_start_utc, tomorrow_start_utc = _get_today_date_range()
@@ -212,7 +218,7 @@ def get_news(db: Session = Depends(get_db)):
                     i.url,
                     i.published_at,
                     i.fetched_at,
-                    i.category,
+                    f.id as feed_id,
                     f.name as feed_name
                 FROM items i
                 JOIN feeds f ON i.feed_id = f.id
@@ -248,24 +254,21 @@ def get_news(db: Session = Depends(get_db)):
                 # Generate pregeneratedCaption from title (simplified)
                 caption = title[:80] + "..." if len(title) > 80 else title
                 
-                raw_category = (row[6] or "").strip()
-                # Ensure category is always one of the 5 buckets, even if older DB rows
-                # still contain RSS tags or "general".
-                if raw_category in ALLOWED_CATEGORIES:
-                    category = raw_category
-                else:
-                    category = classify_category(title, f"{summary} {raw_category}".strip())
+                feed_id = row[6] or ""
+                feed_name = row[7] or "Unknown Source"
+                source_tag = FEED_DISPLAY_TAGS.get(feed_id, feed_name)
 
                 news_item = {
                     "id": item_id,
+                    "feedId": feed_id,
                     "headline": title,
                     "summary": summary or "",
-                    "sourceName": row[7] or "Unknown Source",  # feed_name
+                    "sourceName": feed_name,
                     "sourceUrl": row[3] or "",  # url
                     "pregeneratedCaption": caption,
                     "basePrompt": base_prompt,
                     "initialImageUrl": "",  # RSS items don't have pre-generated images (empty string for frontend compatibility)
-                    "category": category,  # one of 5 buckets
+                    "category": source_tag,  # feed display tag (CNN Top, Fox US, etc.)
                 }
                 news_items.append(news_item)
             
@@ -305,11 +308,10 @@ def _load_static_news():
     try:
         with open(data_file_path, "r") as f:
             data = json.load(f)
-        # Ensure fallback items have a 5-bucket category too (Culture is last resort)
+        # Static fallback: use sourceName as display tag; no feedId (frontend uses default logo)
         for item in data:
-            headline = item.get("headline", "")
-            summary = item.get("summary", "")
-            item["category"] = classify_category(headline, summary)
+            item["category"] = item.get("sourceName", "Unknown Source")
+            item["feedId"] = None
         return data
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="News data file not found.")
@@ -596,20 +598,17 @@ def debug_pull_feeds():
         raise HTTPException(status_code=500, detail={"error": error_msg})
 
 
-@app.post("/api/cron/pull-feeds")
-def cron_pull_feeds(
-    authorization: Optional[str] = Header(None, alias="Authorization"),
-    x_cron_secret: Optional[str] = Header(None, alias="X-Cron-Secret")
-):
+def _verify_cron_secret(
+    authorization: Optional[str] = None,
+    x_cron_secret: Optional[str] = None
+) -> None:
     """
-    Production cron endpoint for RSS feed ingestion.
+    Verify CRON_SECRET from Authorization header or X-Cron-Secret header.
     
-    Accepts either:
-    - Authorization: Bearer <CRON_SECRET> (Vercel Cron format)
-    - X-Cron-Secret: <CRON_SECRET> (backward compatibility)
-    
-    Returns summary of ingestion run.
+    Raises HTTPException if authentication fails.
     """
+    import hmac
+    
     # Get CRON_SECRET from environment
     cron_secret = os.environ.get("CRON_SECRET")
     
@@ -627,16 +626,83 @@ def cron_pull_feeds(
         raise HTTPException(status_code=403, detail={"error": "Missing authentication header"})
     
     # Verify secret (constant-time comparison to prevent timing attacks)
-    import hmac
     if not hmac.compare_digest(provided_secret, cron_secret):
         raise HTTPException(status_code=403, detail={"error": "Invalid CRON_SECRET"})
+
+
+def _run_cron_pull_feeds() -> dict:
+    """
+    Execute RSS feed ingestion and return summary.
+    Shared logic for both GET and POST handlers.
+    """
+    from datetime import timezone as tz
+    
+    start_time = datetime.now(tz.utc)
+    print(f"CRON: Starting pull-feeds at {start_time.isoformat()}")
     
     try:
         summary = run_rss_ingest()
+        
+        end_time = datetime.now(tz.utc)
+        duration_ms = int((end_time - start_time).total_seconds() * 1000)
+        
+        print(f"CRON: Completed pull-feeds in {duration_ms}ms - "
+              f"status={summary.get('status')}, "
+              f"items_inserted={summary.get('items_inserted')}, "
+              f"feeds_succeeded={summary.get('feeds_succeeded')}, "
+              f"feeds_failed={summary.get('feeds_failed')}")
+        
+        # Add timing info to response
+        summary["duration_ms"] = duration_ms
+        summary["completed_at"] = end_time.isoformat()
+        
         return summary
     except Exception as e:
         # Sanitize error messages
         error_msg = str(e)
         if "DATABASE_URL" in error_msg or "password" in error_msg.lower() or "CRON_SECRET" in error_msg:
             error_msg = "Ingestion error"
+        
+        print(f"CRON: Failed pull-feeds with error: {error_msg}")
         raise HTTPException(status_code=500, detail={"error": error_msg})
+
+
+@app.get("/api/cron/pull-feeds")
+def cron_pull_feeds_get(
+    authorization: Optional[str] = Header(None, alias="Authorization"),
+    x_cron_secret: Optional[str] = Header(None, alias="X-Cron-Secret")
+):
+    """
+    GET handler for Vercel Cron - pulls RSS feeds into database.
+    
+    Vercel Cron sends GET requests by default. This endpoint handles the cron
+    invocation with proper authentication via CRON_SECRET.
+    
+    Authentication accepts either:
+    - Authorization: Bearer <CRON_SECRET> (Vercel Cron format)
+    - X-Cron-Secret: <CRON_SECRET> (backward compatibility)
+    
+    Returns summary of ingestion run.
+    """
+    _verify_cron_secret(authorization, x_cron_secret)
+    return _run_cron_pull_feeds()
+
+
+@app.post("/api/cron/pull-feeds")
+def cron_pull_feeds_post(
+    authorization: Optional[str] = Header(None, alias="Authorization"),
+    x_cron_secret: Optional[str] = Header(None, alias="X-Cron-Secret")
+):
+    """
+    POST handler for manual cron trigger - pulls RSS feeds into database.
+    
+    Kept for backward compatibility with manual curl/API calls that use POST.
+    
+    Authentication accepts either:
+    - Authorization: Bearer <CRON_SECRET> (Vercel Cron format)
+    - X-Cron-Secret: <CRON_SECRET> (backward compatibility)
+    
+    Returns summary of ingestion run.
+    """
+    _verify_cron_secret(authorization, x_cron_secret)
+    return _run_cron_pull_feeds()

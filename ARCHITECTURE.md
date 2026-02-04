@@ -1,5 +1,7 @@
 # CartoonGen Architecture and Deployment
 
+**Production URL:** https://cartoon-gen1.vercel.app/
+
 ## Purpose
 
 CartoonGen is a web app that:
@@ -76,7 +78,7 @@ Configure in **Project Settings → Environment Variables** for Production (and 
 | Variable | Purpose |
 |----------|---------|
 | `DATABASE_URL` | Neon Postgres connection string (e.g. `postgresql://user:pass@host/db?sslmode=require`) |
-| `CRON_SECRET` | Secret for authenticating Vercel Cron calls to `POST /api/cron/pull-feeds` |
+| `CRON_SECRET` | Secret for authenticating Vercel Cron calls to `/api/cron/pull-feeds` |
 
 ### Optional
 
@@ -99,9 +101,11 @@ Configure in **Project Settings → Environment Variables** for Production (and 
 
 ## Cron Job
 
-- **Path:** `POST /api/cron/pull-feeds`
+- **Path:** `GET /api/cron/pull-feeds` (Vercel Cron) or `POST /api/cron/pull-feeds` (manual trigger)
 - **Schedule:** `0 16 * * *` (16:00 UTC daily ≈ 8:00 AM Pacific)
 - **Auth:** `Authorization: Bearer <CRON_SECRET>` or `X-Cron-Secret: <CRON_SECRET>`
+
+**Important:** Vercel Cron sends GET requests by default. The endpoint supports both GET and POST for compatibility.
 
 The cron fetches RSS feeds from `backend/data/feeds.json`, upserts items into the database, and updates `fetched_at` so `/api/news` returns today's headlines.
 
@@ -114,7 +118,8 @@ The cron fetches RSS feeds from `backend/data/feeds.json`, upserts items into th
 | GET | `/api/health` | Health check—returns `{"ok": true}` |
 | GET | `/api/news` | Today's headlines (filtered by `fetched_at` in Pacific Time) |
 | POST | `/api/generate-image` | Generate cartoon for headline (body: `headlineId`, `style`) |
-| POST | `/api/cron/pull-feeds` | RSS ingestion (cron or manual with `CRON_SECRET`) |
+| GET | `/api/cron/pull-feeds` | RSS ingestion (Vercel Cron—requires `CRON_SECRET`) |
+| POST | `/api/cron/pull-feeds` | RSS ingestion (manual trigger—requires `CRON_SECRET`) |
 | GET | `/api/debug/db` | Database connectivity check |
 | POST | `/api/debug/ingest` | Manual RSS ingest (no auth—use with caution) |
 
