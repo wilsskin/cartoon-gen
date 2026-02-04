@@ -13,11 +13,13 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD 
 function App() {
   const [newsItems, setNewsItems] = useState([]);
   const [selectedNews, setSelectedNews] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
     // Fetch the initial list of news headlines on component mount
     const newsUrl = `${API_BASE_URL}/api/news`;
+    setIsLoading(true);
     axios.get(newsUrl)
       .then(response => {
         console.log('News items fetched:', response.data);
@@ -39,6 +41,9 @@ function App() {
           `Make sure backend is running on ${API_BASE_URL || 'same origin'}.`
         );
         setNewsItems([]); // Ensure it's empty on error
+      })
+      .finally(() => {
+        setIsLoading(false);
       });
   }, []);
 
@@ -57,6 +62,7 @@ function App() {
                 newsItems={newsItems}
                 selectedNews={selectedNews}
                 setSelectedNews={setSelectedNews}
+                isLoading={isLoading}
               />
             }
           />

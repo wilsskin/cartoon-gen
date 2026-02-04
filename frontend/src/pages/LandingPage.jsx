@@ -18,7 +18,7 @@ const FEED_LOGOS = {
   wsj_world: wsjLogo,
 };
 
-const LandingPage = ({ newsItems, selectedNews, setSelectedNews }) => {
+const LandingPage = ({ newsItems, selectedNews, setSelectedNews, isLoading }) => {
   const [showAll, setShowAll] = useState(false);
   const navigate = useNavigate();
 
@@ -60,8 +60,10 @@ const LandingPage = ({ newsItems, selectedNews, setSelectedNews }) => {
 
           {/* News Items List */}
           <div className="news-list-section">
-            {newsItems.length === 0 ? (
-              <div className="news-loading">No headlines available. Make sure the backend is running.</div>
+            {isLoading ? (
+              <div className="news-loading">Headlines loading...</div>
+            ) : newsItems.length === 0 ? (
+              <div className="news-loading">No headlines available</div>
             ) : (
               visibleHeadlines.map((item, index) => (
                 <div
