@@ -165,3 +165,11 @@ If `/api/*` returns HTML or 404, routing is misconfigured (check `vercel.json` r
 - Keep infrastructure minimal
 - One backend, one frontend, one database
 - Fix issues at the source, not with overrides
+
+---
+
+## Frontend Notes
+
+- **Filter:** Single-select by news source, reorders headlines (selected source first)
+- **Pagination:** Shows 5 headlines at a time, More/Less buttons add/remove 5
+- **Animations:** Headlines cascade in on load and filter change (see `DESIGN_SYSTEM.md`)

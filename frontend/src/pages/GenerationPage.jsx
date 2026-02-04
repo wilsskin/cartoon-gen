@@ -96,38 +96,42 @@ const GenerationPage = ({ selectedNews }) => {
         <div className="generation-card-container">
           {/* Image Card */}
           <div className="generation-card">
-            {error && <p className="error-message">{error}</p>}
-            <CanvasMeme
-              backgroundImageUrl={currentImageUrl}
-              captionText={selectedNews.pregeneratedCaption}
-              isLoading={isLoading}
-            />
+            {error ? (
+              <div className="generation-error">
+                <span className="generation-error-text">Failed to generate image</span>
+              </div>
+            ) : (
+              <CanvasMeme
+                backgroundImageUrl={currentImageUrl}
+                captionText={selectedNews.pregeneratedCaption}
+                isLoading={isLoading}
+              />
+            )}
           </div>
 
-          {/* Article Link - wraps logo, headline, and description */}
-          <a
-            href={selectedNews.sourceUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="generation-article-link"
-          >
-            {/* Source Logo */}
-            <div className="generation-source">
+          {/* Source Logo - links to article */}
+          <div className="generation-source">
+            <a
+              href={selectedNews.sourceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="generation-source-link"
+            >
               <img
                 src={FEED_LOGOS[selectedNews.feedId] || wsjLogo}
                 alt={selectedNews.category || 'News source'}
                 className="generation-source-logo"
               />
-            </div>
+            </a>
+          </div>
 
-            {/* Text Content */}
-            <div className="generation-text-content">
-              <h2 className="generation-headline">{selectedNews.headline}</h2>
-              {selectedNews.summary && (
-                <p className="generation-subtext">{selectedNews.summary}</p>
-              )}
-            </div>
-          </a>
+          {/* Text Content */}
+          <div className="generation-text-content">
+            <h2 className="generation-headline">{selectedNews.headline}</h2>
+            {selectedNews.summary && (
+              <p className="generation-subtext">{selectedNews.summary}</p>
+            )}
+          </div>
 
           {/* Action Icons */}
           <div className="generation-actions">
@@ -138,20 +142,13 @@ const GenerationPage = ({ selectedNews }) => {
 
       {/* Footer */}
       <div className="generation-footer">
-        <div className="footer-text">
-          <p className="footer-subtitle">
-            Built by{' '}
-            <span>
-              <a href="#" style={{ textDecoration: 'underline', textUnderlineOffset: '2px', textDecorationThickness: '0.8px', color: 'inherit' }}>Wilson Skinner</a>
-            </span>
-            {' '}and{' '}
-            <span>
-              <a href="#" style={{ textDecoration: 'underline', textUnderlineOffset: '2px', textDecorationThickness: '0.8px', color: 'inherit' }}>Aryan Daga</a>
-            </span>
-          </p>
+        <div className="footer-left">
+          <span className="footer-text">©2026 CartoonGen</span>
+          <span className="footer-text">Built by Wilson Skinner & Aryn Dagnas</span>
         </div>
-        <div className="footer-links">
-          <a href="#" className="footer-link">How it works</a>
+        <div className="footer-right">
+          <a href="#" className="footer-text">How it works</a>
+          <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="footer-text">Github repo</a>
         </div>
       </div>
     </div>
