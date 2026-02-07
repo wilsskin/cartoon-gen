@@ -22,14 +22,17 @@ SMOKE TEST INSTRUCTIONS:
    - Should return: {"ok": true}
 """
 
+import asyncio
 import json
 import os
 import re
+import time
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional, Tuple
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Depends, Header, Request
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -83,7 +86,7 @@ import sys
 backend_path = Path(__file__).resolve().parent.parent
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
-from db import get_db
+from db import get_db, SessionLocal
 from services.rss_ingest import run_rss_ingest
 
 # Define the base directory of the backend
@@ -122,12 +125,16 @@ static_files_path = BASE_DIR.parent / "static"
 app.mount("/static", StaticFiles(directory=static_files_path), name="static")
 
 # --- Pydantic Models for Request Body Validation ---
+PROMPT_MAX_LENGTH = 2000
+
+
 class ImageRequest(BaseModel):
-    headlineId: str
+    """Accepts either prompt (direct) or headlineId + style (server builds prompt)."""
+    prompt: Optional[str] = None
+    headlineId: Optional[str] = None
     style: Optional[str] = None
     regenerate: bool = False
-    # basePrompt is ignored if provided - kept for backward compatibility during migration
-    basePrompt: Optional[str] = None
+    basePrompt: Optional[str] = None  # ignored; backward compat
 
 # --- API Endpoints ---
 # Maximum number of news items to return from database
@@ -326,70 +333,38 @@ def _load_static_news():
 def _lookup_headline_by_id(headline_id: str, db: Session) -> dict:
     """
     Look up a headline by its ID from the database or static fallback.
-    
-    For database items, the ID is the UUID (stable unique identifier).
-    For static items, the ID is the numeric id field from news.json.
-    
-    Database lookup only matches items fetched today in Pacific Time (fetched_at >= today 00:00 PT AND fetched_at < tomorrow 00:00 PT).
-    The database comparison uses UTC boundaries converted from Pacific Time.
-    Static fallback is only used if ALLOW_STATIC_NEWS_FALLBACK is True.
-    
-    Args:
-        headline_id: The headline ID as a string (UUID for DB items, numeric string for static items)
-        db: Database session
-        
-    Returns:
-        Dictionary with headline data: {headline, summary, id}
-        
-    Raises:
-        HTTPException(404): If headline not found
+
+    No date filter: the news list is already restricted to "today" by the endpoint
+    that serves headlines. Image generation just uses whatever headline the user
+    clicked (by ID). For DB items we match UUID and exclude cnn_top; for static
+    fallback we use numeric id from news.json when ALLOW_STATIC_NEWS_FALLBACK is True.
     """
-    # Determine if headline_id is a UUID or numeric
     is_uuid = _is_valid_uuid(headline_id)
-    
-    # First, try to find in database by UUID (only if it's a valid UUID format)
+
     if is_uuid:
         try:
-            today_start_utc, tomorrow_start_utc = _get_today_date_range()
-            
+            # LEFT JOIN so we still find the item if the feed row is missing (e.g. feed deleted)
             result = db.execute(
                 text("""
-                    SELECT 
-                        i.id,
-                        i.title,
-                        i.summary,
-                        i.url,
-                        i.published_at,
-                        i.fetched_at,
-                        i.category,
-                        f.name as feed_name
+                    SELECT i.id, i.title, i.summary, i.url, i.published_at, i.fetched_at, i.category, f.name as feed_name
                     FROM items i
-                    JOIN feeds f ON i.feed_id = f.id
-                    WHERE i.id::text = :headline_id
-                      AND i.fetched_at >= :today_start_utc 
-                      AND i.fetched_at < :tomorrow_start_utc
-                      AND i.feed_id != 'cnn_top'
+                    LEFT JOIN feeds f ON i.feed_id = f.id
+                    WHERE i.id::text = :headline_id AND (i.feed_id IS NULL OR i.feed_id != 'cnn_top')
                 """),
-                {
-                    "headline_id": headline_id,
-                    "today_start_utc": today_start_utc,
-                    "tomorrow_start_utc": tomorrow_start_utc,
-                }
+                {"headline_id": headline_id},
             )
-            
             row = result.fetchone()
             if row:
                 return {
                     "headline": row[1] or "",
                     "summary": row[2] or "",
-                    "id": str(row[0]),  # UUID as string
+                    "id": str(row[0]),
                 }
+            print(f"headline lookup: id={headline_id} not found in items (or feed is cnn_top)")
         except Exception as e:
-            # Log specific error but don't expose details
             print(f"Database lookup error for UUID {headline_id}: {type(e).__name__}")
-            # Continue to 404 below
-    
-    # Fallback to static news.json (only if numeric ID and flag is enabled)
+
+    # Static fallback (only if numeric ID and flag is enabled)
     if not is_uuid and ALLOW_STATIC_NEWS_FALLBACK:
         try:
             headline_id_int = int(headline_id)
@@ -490,6 +465,11 @@ def _build_prompt_template(headline: str, summary: str, style: str) -> str:
 # Maximum number of image generation requests per IP within the time window
 RATE_LIMIT_MAX_REQUESTS = 10
 RATE_LIMIT_WINDOW_MINUTES = 5
+
+# --- Per-process throttle (avoid rapid-fire during dev) ---
+# At most 1 image generation request per second per process (in-memory).
+_last_image_request_time: float = 0
+IMAGE_THROTTLE_MIN_INTERVAL = 1.0
 
 
 def _get_client_ip(request: Request) -> str:
@@ -619,72 +599,232 @@ def debug_news_source(db: Session = Depends(get_db)):
     except Exception:
         return {"source": "fallback"}
 
+
+@app.get("/api/debug/news-ids")
+def debug_news_ids(db: Session = Depends(get_db)):
+    """
+    Debug: list item IDs in the DB (no date filter). Use to verify which IDs exist
+    when headline lookup returns 404. Compare these to the id you're sending.
+    """
+    try:
+        result = db.execute(
+            text("""
+                SELECT i.id::text
+                FROM items i
+                WHERE i.feed_id != 'cnn_top'
+                ORDER BY i.fetched_at DESC NULLS LAST
+                LIMIT 50
+            """)
+        )
+        ids = [row[0] for row in result.fetchall()]
+        return {"count": len(ids), "ids": ids}
+    except Exception as e:
+        return {"count": 0, "ids": [], "error": str(e)}
+
+
+@app.get("/api/debug/headline/{headline_id}")
+def debug_headline_lookup(headline_id: str, db: Session = Depends(get_db)):
+    """
+    Debug: run the same lookup as generate-image for one ID. Shows whether the row
+    exists, its feed_id, and whether the full lookup (with JOIN) finds it.
+    """
+    out = {"headline_id": headline_id, "in_items": None, "lookup_found": None, "lookup_row": None}
+    try:
+        # 1) Does the row exist in items at all?
+        row = db.execute(
+            text("SELECT id::text, feed_id, title FROM items WHERE id::text = :hid"),
+            {"hid": headline_id},
+        ).fetchone()
+        if row:
+            out["in_items"] = True
+            out["feed_id"] = row[1]
+            out["title_preview"] = (row[2] or "")[:60]
+        else:
+            out["in_items"] = False
+            return out
+        # 2) Exact same query as _lookup_headline_by_id (LEFT JOIN)
+        lookup = db.execute(
+            text("""
+                SELECT i.id::text, i.title, i.summary
+                FROM items i
+                LEFT JOIN feeds f ON i.feed_id = f.id
+                WHERE i.id::text = :headline_id AND (i.feed_id IS NULL OR i.feed_id != 'cnn_top')
+            """),
+            {"headline_id": headline_id},
+        ).fetchone()
+        if lookup:
+            out["lookup_found"] = True
+            out["lookup_row"] = {"id": lookup[0], "title_preview": (lookup[1] or "")[:60]}
+        else:
+            out["lookup_found"] = False
+        return out
+    except Exception as e:
+        out["error"] = str(e)
+        return out
+
+
+def _apply_throttle() -> None:
+    """In-memory throttle: at most 1 request per IMAGE_THROTTLE_MIN_INTERVAL seconds."""
+    global _last_image_request_time
+    now = time.monotonic()
+    elapsed = now - _last_image_request_time
+    if elapsed < IMAGE_THROTTLE_MIN_INTERVAL:
+        wait = IMAGE_THROTTLE_MIN_INTERVAL - elapsed
+        time.sleep(wait)
+    _last_image_request_time = time.monotonic()
+
+
 @app.post("/api/generate-image")
 async def generate_image(request: ImageRequest, raw_request: Request, db: Session = Depends(get_db)):
     """
-    Generates an image based on a headline ID and optional style.
-    
-    The prompt is constructed server-side from the headline data.
-    The client must NOT send any prompt text - only headlineId and style.
-    
-    Rate limited to RATE_LIMIT_MAX_REQUESTS per RATE_LIMIT_WINDOW_MINUTES per IP.
+    Generates an image using Gemini native image model.
+
+    Accepts either:
+    - prompt: string (non-empty, max 2000 chars) — used directly (wrapped in template)
+    - headlineId + optional style — prompt built server-side from headline
+
+    Rate limited per IP and per-process throttled (1 req/sec).
+    Returns { ok, imageBase64?, mimeType?, model?, requestId? } or { ok: false, error: { ... } }.
     """
     # --- Rate limit check ---
     client_ip = _get_client_ip(raw_request)
     rate_check = _check_rate_limit(client_ip, "generate-image", db)
-    
     if not rate_check["allowed"]:
         retry_after = rate_check["retry_after_seconds"]
-        raise HTTPException(
+        return JSONResponse(
             status_code=429,
-            detail=(
-                f"Rate limit exceeded. You can generate up to {RATE_LIMIT_MAX_REQUESTS} cartoons "
-                f"every {RATE_LIMIT_WINDOW_MINUTES} minutes. "
-                f"Please wait {retry_after} seconds and try again."
-            ),
+            content={
+                "ok": False,
+                "error": {
+                    "code": "RATE_LIMIT",
+                    "message": (
+                        f"Rate limit exceeded. You can generate up to {RATE_LIMIT_MAX_REQUESTS} cartoons "
+                        f"every {RATE_LIMIT_WINDOW_MINUTES} minutes. "
+                        f"Please wait {retry_after} seconds and try again."
+                    ),
+                    "status": 429,
+                    "details": None,
+                    "model": services.GEMINI_IMAGE_MODEL,
+                    "requestId": None,
+                },
+            },
             headers={"Retry-After": str(retry_after)},
         )
 
-    # Fail loudly (but safely) if the server is not configured for image generation.
-    # Never log or return the key value.
+    # Fail fast if API key missing (never log or return the key)
     if not os.environ.get("GEMINI_API_KEY"):
-        raise HTTPException(status_code=500, detail="GEMINI_API_KEY is not configured")
+        return {
+            "ok": False,
+            "error": {
+                "code": "MISSING_API_KEY",
+                "message": "GEMINI_API_KEY is not configured. Set it in Vercel Project Settings → Environment Variables or in backend/.env for local dev.",
+                "status": 500,
+                "details": None,
+                "model": services.GEMINI_IMAGE_MODEL,
+                "requestId": None,
+            },
+        }
 
-    # Validate style against allowlist
-    style = request.style if request.style else "Default"
-    if style not in ALLOWED_STYLES:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid style '{style}'. Allowed styles: {', '.join(ALLOWED_STYLES)}"
-        )
-
-    # Look up headline by ID (from DB or static fallback)
-    headline_data = _lookup_headline_by_id(request.headlineId, db)
-    
-    # Build prompt server-side from headline data
-    final_prompt = _build_prompt_template(
-        headline=headline_data["headline"],
-        summary=headline_data["summary"],
-        style=style
-    )
-
-    print(f"Generating image for headlineId {request.headlineId} with style '{style}'")
-
-    # Call the image generation service
-    try:
-        image_url = services.generate_satire_image(final_prompt)
-    except RuntimeError as e:
-        # Surface expected configuration errors clearly.
-        msg = str(e)
-        if "GEMINI_API_KEY" in msg:
-            raise HTTPException(status_code=500, detail="GEMINI_API_KEY is not configured")
-        raise HTTPException(status_code=500, detail="Image generation is not configured")
-
-    if image_url:
-        # The URL is now a Base64 data URL
-        return {"imageUrl": image_url, "cacheHit": False}
+    # Resolve final prompt: either from request.prompt or from headlineId + style
+    if request.prompt is not None and request.prompt.strip():
+        prompt_text = request.prompt.strip()
+        if len(prompt_text) > PROMPT_MAX_LENGTH:
+            return {
+                "ok": False,
+                "error": {
+                    "code": "PROMPT_TOO_LONG",
+                    "message": f"Prompt must be at most {PROMPT_MAX_LENGTH} characters.",
+                    "status": 400,
+                    "details": None,
+                    "model": services.GEMINI_IMAGE_MODEL,
+                    "requestId": None,
+                },
+            }
+        final_prompt = _build_prompt_template(headline=prompt_text, summary="", style="Default")
+        log_context = "prompt"
     else:
-        raise HTTPException(status_code=500, detail="Failed to generate image.")
+        if not request.headlineId or not request.headlineId.strip():
+            return {
+                "ok": False,
+                "error": {
+                    "code": "MISSING_INPUT",
+                    "message": "Provide either 'prompt' or 'headlineId'.",
+                    "status": 400,
+                    "details": None,
+                    "model": services.GEMINI_IMAGE_MODEL,
+                    "requestId": None,
+                },
+            }
+        style = request.style if request.style else "Default"
+        if style not in ALLOWED_STYLES:
+            return {
+                "ok": False,
+                "error": {
+                    "code": "INVALID_STYLE",
+                    "message": f"Invalid style. Allowed: {', '.join(ALLOWED_STYLES)}",
+                    "status": 400,
+                    "details": None,
+                    "model": services.GEMINI_IMAGE_MODEL,
+                    "requestId": None,
+                },
+            }
+        headline_id = request.headlineId.strip()
+        # Use a fresh DB session for lookup so rate-limit session state doesn't affect the query
+        lookup_db = SessionLocal()
+        try:
+            headline_data = _lookup_headline_by_id(headline_id, lookup_db)
+        except HTTPException as e:
+            return {
+                "ok": False,
+                "error": {
+                    "code": "HEADLINE_NOT_FOUND",
+                    "message": e.detail if isinstance(e.detail, str) else "Headline not found.",
+                    "status": e.status_code,
+                    "details": None,
+                    "model": services.GEMINI_IMAGE_MODEL,
+                    "requestId": None,
+                },
+            }
+        finally:
+            lookup_db.close()
+        final_prompt = _build_prompt_template(
+            headline=headline_data["headline"],
+            summary=headline_data["summary"],
+            style=style,
+        )
+        log_context = f"headlineId={request.headlineId} style={style}"
+
+    # Per-process throttle (blocking wait)
+    _apply_throttle()
+
+    start = time.perf_counter()
+    result = services.generate_satire_image(final_prompt)
+    elapsed_ms = int((time.perf_counter() - start) * 1000)
+    request_id = result.get("request_id") if result.get("ok") else result.get("error", {}).get("request_id")
+
+    # Log model, timing, status, requestId — never the API key
+    print(f"generate-image model={services.GEMINI_IMAGE_MODEL} status={'ok' if result.get('ok') else 'error'} elapsed_ms={elapsed_ms} requestId={request_id} context={log_context}")
+
+    if result.get("ok"):
+        return {
+            "ok": True,
+            "imageBase64": result["image_base64"],
+            "mimeType": result["mime_type"],
+            "model": result["model"],
+            "requestId": result.get("request_id"),
+        }
+    err = result.get("error", {})
+    return {
+        "ok": False,
+        "error": {
+            "code": err.get("code", "UNKNOWN"),
+            "message": err.get("message", "Image generation failed."),
+            "status": err.get("status"),
+            "details": err.get("details"),
+            "model": err.get("model", services.GEMINI_IMAGE_MODEL),
+            "requestId": err.get("request_id"),
+        },
+    }
 
 @app.get("/")
 def read_root():
@@ -694,10 +834,13 @@ def read_root():
 @app.get("/api/health")
 def health_check():
     """
-    Simple health check endpoint that doesn't require database connection.
-    Returns {"ok": true} if the server is running.
+    Health check: ok, whether Gemini API key is set (not the value), and image model name.
     """
-    return {"ok": True}
+    return {
+        "ok": True,
+        "hasApiKey": bool(os.environ.get("GEMINI_API_KEY")),
+        "model": services.GEMINI_IMAGE_MODEL,
+    }
 
 
 @app.get("/api/debug/db")

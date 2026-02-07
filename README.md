@@ -45,4 +45,6 @@ npm run dev:full
 
 ## Deployment & Configuration
 
-For deployment details, environment variables, Vercel setup, and integration specifics, see **[ARCHITECTURE.md](./ARCHITECTURE.md)**.
+For deployment details, Vercel setup, and integration specifics, see **[ARCHITECTURE.md](./ARCHITECTURE.md)**.
+
+**Environment variables:** Set `DATABASE_URL`, `CRON_SECRET`, and (for image generation) `GEMINI_API_KEY`. On Vercel: Project Settings → Environment Variables. Locally: create `backend/.env` with the same names. Image generation uses the Gemini API; free-tier limits (e.g. 429 rate limit, quota exceeded) are documented in ARCHITECTURE.md.

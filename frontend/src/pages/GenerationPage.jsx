@@ -30,6 +30,8 @@ const GenerationPage = ({ selectedNews }) => {
   const [currentImageUrl, setCurrentImageUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [errorDetails, setErrorDetails] = useState(null); // { code, message, status, model, requestId, details }
+  const [showErrorDetails, setShowErrorDetails] = useState(false);
   const [isRateLimited, setIsRateLimited] = useState(false);
   const lastHeadlineIdRef = useRef(null);
 
@@ -55,6 +57,8 @@ const GenerationPage = ({ selectedNews }) => {
 
     setIsLoading(true);
     setError('');
+    setErrorDetails(null);
+    setShowErrorDetails(false);
     setIsRateLimited(false);
 
     axios.post(`${API_BASE_URL}/api/generate-image`, {
@@ -62,20 +66,61 @@ const GenerationPage = ({ selectedNews }) => {
       style: style,
     })
     .then(response => {
-      setCurrentImageUrl(response.data.imageUrl);
+      const data = response?.data;
+      if (data?.ok && data?.imageBase64) {
+        const mime = data.mimeType || 'image/png';
+        setCurrentImageUrl(`data:${mime};base64,${data.imageBase64}`);
+        return;
+      }
+      if (data?.ok === false && data?.error) {
+        const err = data.error;
+        setError(err.message || 'Image generation failed.');
+        setErrorDetails({
+          code: err.code,
+          message: err.message,
+          status: err.status,
+          model: err.model,
+          requestId: err.requestId,
+          details: err.details,
+        });
+        return;
+      }
+      setError('Image generation failed. Please try again.');
     })
     .catch(err => {
       console.error("Image generation failed:", err);
       const status = err?.response?.status;
-      const backendDetail = err?.response?.data?.detail;
+      const data = err?.response?.data;
 
       if (status === 429) {
         setIsRateLimited(true);
-        setError(backendDetail || "You've generated too many cartoons. Please wait a few minutes and try again.");
-      } else if (typeof backendDetail === 'string' && backendDetail.trim().length > 0) {
-        setError(backendDetail);
-      } else {
-        setError('Image generation failed. Please try again.');
+        setError(data?.error?.message || data?.detail || "You've generated too many cartoons. Please wait a few minutes and try again.");
+        if (data?.error) setErrorDetails({ ...data.error, requestId: data.error.requestId });
+        return;
+      }
+      if (data?.ok === false && data?.error) {
+        const e = data.error;
+        setError(e.message || 'Image generation failed.');
+        setErrorDetails({
+          code: e.code,
+          message: e.message,
+          status: e.status,
+          model: e.model,
+          requestId: e.requestId,
+          details: e.details,
+        });
+        return;
+      }
+      setError(data?.detail || data?.error?.message || 'Image generation failed. Please try again.');
+      if (data?.error) {
+        setErrorDetails({
+          code: data.error.code,
+          message: data.error.message,
+          status: data.error.status,
+          model: data.error.model,
+          requestId: data.error.requestId,
+          details: data.error.details,
+        });
       }
     })
     .finally(() => {
@@ -109,7 +154,32 @@ const GenerationPage = ({ selectedNews }) => {
                     <span className="generation-error-text">{error}</span>
                   </>
                 ) : (
-                  <span className="generation-error-text">Failed to generate image</span>
+                  <>
+                    <span className="generation-error-text">{error}</span>
+                    {errorDetails && (
+                      <div className="generation-error-details">
+                        <button
+                          type="button"
+                          className="generation-error-details-toggle"
+                          onClick={() => setShowErrorDetails((v) => !v)}
+                          aria-expanded={showErrorDetails}
+                        >
+                          {showErrorDetails ? 'Hide' : 'Show'} details
+                        </button>
+                        {showErrorDetails && (
+                          <pre className="generation-error-details-content">
+                            {[
+                              errorDetails.status != null && `Status: ${errorDetails.status}`,
+                              errorDetails.code != null && errorDetails.code !== undefined && `Code: ${String(errorDetails.code)}`,
+                              errorDetails.model != null && errorDetails.model !== undefined && `Model: ${String(errorDetails.model)}`,
+                              errorDetails.requestId != null && errorDetails.requestId !== undefined && `Request ID: ${String(errorDetails.requestId)}`,
+                              errorDetails.details != null && `Details: ${JSON.stringify(errorDetails.details, null, 2)}`,
+                            ].filter(Boolean).join('\n')}
+                          </pre>
+                        )}
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             ) : (

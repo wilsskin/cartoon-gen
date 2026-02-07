@@ -91,6 +91,23 @@ Configure in **Project Settings → Environment Variables** for Production (and 
 | `DEBUG_TIME_WINDOWS` | Log time window calculations | `false` |
 | `DEBUG_RSS_DUMP` | On parse failure or 0 entries (with 200), save raw feed XML to a temp file and log path | `false` |
 
+### Where to set environment variables
+
+- **Vercel:** Project Settings → Environment Variables. Add each variable for Production (and Preview if needed). Redeploy after changing.
+- **Local:** Create `backend/.env` with the same variable names (e.g. `GEMINI_API_KEY=...`). The backend loads `.env` via python-dotenv at startup.
+
+### Image generation (Gemini) and free-tier
+
+Image generation uses **Gemini 2.5 Flash Image** (`gemini-2.5-flash-image`) via the Google AI Studio / Gemini API. Set `GEMINI_API_KEY` to a key from [Google AI Studio](https://aistudio.google.com/apikey).
+
+**Common free-tier errors:**
+
+- **429 (rate limit)** — Too many requests per minute; the backend retries with backoff. If you see this in the UI, wait a minute and try again.
+- **Quota exceeded** — Daily or per-minute quota for the model is used up. Check usage in Google AI Studio; quotas reset on their schedule.
+- **Model access** — Ensure the key has access to the image model (e.g. enable the Gemini API and the image generation model for your project).
+
+---
+
 ### Integration Checklist
 
 - [ ] `DATABASE_URL` set (Neon connection string)
@@ -154,9 +171,9 @@ Image generation (`POST /api/generate-image`) is rate-limited per IP address:
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| GET | `/api/health` | Health check—returns `{"ok": true}` |
+| GET | `/api/health` | Health check—returns `{"ok": true, "hasApiKey": boolean, "model": string}` (never exposes the key) |
 | GET | `/api/news` | Today's headlines (filtered by `fetched_at` in Pacific Time) |
-| POST | `/api/generate-image` | Generate cartoon for headline (body: `headlineId`, `style`)—rate limited |
+| POST | `/api/generate-image` | Generate cartoon (body: `prompt` and/or `headlineId` + `style`)—rate limited; returns `{ok, imageBase64?, mimeType?, model?, requestId?}` or `{ok: false, error: {...}}` |
 | GET | `/api/cron/pull-feeds` | RSS ingestion (Vercel Cron—requires `CRON_SECRET`) |
 | POST | `/api/cron/pull-feeds` | RSS ingestion (manual trigger—requires `CRON_SECRET`) |
 | GET | `/api/debug/db` | Database connectivity check |

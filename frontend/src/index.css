@@ -585,10 +585,13 @@ a.footer-text:hover {
 /* Error state inside card */
 .generation-error {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 8px;
   width: 100%;
-  height: 100%;
+  min-height: 120px;
+  padding: 24px;
   background-color: #f5f5f5;
   border-radius: 7px;
 }
@@ -599,6 +602,42 @@ a.footer-text:hover {
   font-weight: 400;
   letter-spacing: -0.01em;
   color: #767676;
+  text-align: center;
+}
+
+.generation-error-details {
+  margin-top: 8px;
+  width: 100%;
+  max-width: 100%;
+}
+
+.generation-error-details-toggle {
+  font-family: 'Crimson Text', Georgia, serif;
+  font-size: 13px;
+  color: #767676;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}
+
+.generation-error-details-toggle:hover {
+  color: #000;
+}
+
+.generation-error-details-content {
+  margin-top: 8px;
+  padding: 12px;
+  font-size: 12px;
+  font-family: ui-monospace, monospace;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: #333;
 }
 
 /* Rate limit error state */
