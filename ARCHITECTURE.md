@@ -89,6 +89,7 @@ Configure in **Project Settings → Environment Variables** for Production (and 
 | `CORS_ORIGINS` | Comma-separated allowed origins (rarely needed when frontend/API share domain) | — |
 | `DEBUG_MODE` | Enable `POST /api/debug/pull-feeds` for manual ingest | `false` |
 | `DEBUG_TIME_WINDOWS` | Log time window calculations | `false` |
+| `DEBUG_RSS_DUMP` | On parse failure or 0 entries (with 200), save raw feed XML to a temp file and log path | `false` |
 
 ### Integration Checklist
 
@@ -118,8 +119,34 @@ The cron job automatically cleans up old data to prevent database bloat:
 | `items` | 7 days | News headlines (only "today" shown in UI) |
 | `runs` | 30 days | Cron execution logs for debugging |
 | `feed_run_errors` | 30 days | Error logs for debugging |
+| `rate_limits` | 1 hour | Per-IP rate limit tracking for image generation |
 
 Cleanup runs at the end of each cron execution and is non-blocking (failures don't affect ingestion).
+
+---
+
+## Rate Limiting
+
+Image generation (`POST /api/generate-image`) is rate-limited per IP address:
+
+| Setting | Value |
+|---------|-------|
+| Max requests | 10 per window |
+| Window | 5 minutes |
+| Storage | `rate_limits` table in Postgres |
+| Response when exceeded | `429 Too Many Requests` with `Retry-After` header |
+
+**How it works:**
+- Each image generation request records the client IP and timestamp in the `rate_limits` table
+- Before each generation, the backend counts requests from that IP in the last 5 minutes
+- If the count exceeds 10, the request is rejected with a 429 and a human-readable message
+- The `Retry-After` header tells the client how many seconds to wait
+- The frontend detects 429 responses and displays a dedicated "Slow down!" message
+- Old rate limit entries are cleaned up hourly by the cron job
+
+**Client IP detection:** Uses `X-Forwarded-For` header (set by Vercel's proxy) with fallback to `request.client.host` for local development.
+
+**Recommended:** Also set per-minute and per-day quota limits on the Gemini API key in Google Cloud Console as a global cost safety net.
 
 ---
 
@@ -129,7 +156,7 @@ Cleanup runs at the end of each cron execution and is non-blocking (failures don
 |--------|------|---------|
 | GET | `/api/health` | Health check—returns `{"ok": true}` |
 | GET | `/api/news` | Today's headlines (filtered by `fetched_at` in Pacific Time) |
-| POST | `/api/generate-image` | Generate cartoon for headline (body: `headlineId`, `style`) |
+| POST | `/api/generate-image` | Generate cartoon for headline (body: `headlineId`, `style`)—rate limited |
 | GET | `/api/cron/pull-feeds` | RSS ingestion (Vercel Cron—requires `CRON_SECRET`) |
 | POST | `/api/cron/pull-feeds` | RSS ingestion (manual trigger—requires `CRON_SECRET`) |
 | GET | `/api/debug/db` | Database connectivity check |
@@ -155,6 +182,7 @@ If `/api/*` returns HTML or 404, routing is misconfigured (check `vercel.json` r
 - **Path resolution:** Use `Path(__file__).resolve()` for file paths (e.g. `feeds.json`, `news.json`) so they work in serverless
 - **Image generation:** Requires `GEMINI_API_KEY`; without it, `/api/generate-image` returns 500
 - **Cron:** Ensure Vercel Cron is enabled for the project and `CRON_SECRET` matches what Vercel sends
+- **Vite cache:** If frontend changes don't appear after editing, delete `frontend/node_modules/.vite/` and restart the dev server. Vite caches transformed modules and may serve stale code, especially after renaming or deleting asset files. HMR can silently fail when an import references a file that no longer exists
 
 ---
 

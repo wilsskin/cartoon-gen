@@ -7,14 +7,14 @@
   },
   "feeds": [
     {
-      "id": "wsj_world",
+      "id": "wsj_us",
       "name": "Wall Street Journal",
-      "url": "https://feeds.a.dj.com/rss/RSSWorldNews.xml",
+      "url": "https://feeds.content.dowjones.io/public/rss/RSSUSnews",
       "category": "general",
       "language": "en",
       "enabled": true,
       "weight": 1,
-      "notes": "WSJ world and global coverage"
+      "notes": "WSJ US News (live)"
     },
     {
       "id": "nyt_home",
@@ -25,16 +25,6 @@
       "enabled": true,
       "weight": 1,
       "notes": "NYT main homepage feed"
-    },
-    {
-      "id": "cnn_top",
-      "name": "CNN",
-      "url": "http://rss.cnn.com/rss/cnn_topstories.rss",
-      "category": "general",
-      "language": "en",
-      "enabled": true,
-      "weight": 1,
-      "notes": "CNN top stories"
     },
     {
       "id": "nbc_top",

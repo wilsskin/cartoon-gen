@@ -4,7 +4,7 @@ Generate political cartoons from today's top headlines using AI.
 
 ## What It Does
 
-CartoonGen pulls the latest headlines from major news outlets (WSJ, NYT, CNN, NBC, Fox, NPR), displays them in a clean interface, and lets you generate satirical cartoon illustrations for any headline. Click a headline to see an AI-generated political cartoon based on that story.
+CartoonGen pulls the latest headlines from major news outlets (WSJ, NYT, NBC, Fox, NPR), displays them in a clean interface, and lets you generate satirical cartoon illustrations for any headline. Click a headline to see an AI-generated political cartoon based on that story.
 
 ## How It Works
 

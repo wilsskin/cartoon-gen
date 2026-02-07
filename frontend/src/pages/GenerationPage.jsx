@@ -6,20 +6,18 @@ import arrowBack from '../assets/images/arrow-back.svg';
 import actionIcons from '../assets/images/action-icons.svg';
 
 // News source logos
-import cnnLogo from '../assets/images/cnn.svg';
 import foxLogo from '../assets/images/fox-us.svg';
 import nbcLogo from '../assets/images/nbc.svg';
 import nytLogo from '../assets/images/nyt.svg';
 import nprLogo from '../assets/images/npr.svg';
-import wsjLogo from '../assets/images/wsj-logo.png';
+import wsjLogo from '../assets/images/wsj.png';
 
 const FEED_LOGOS = {
-  cnn_top: cnnLogo,
   fox_us: foxLogo,
   nbc_top: nbcLogo,
   nyt_home: nytLogo,
   npr_news: nprLogo,
-  wsj_world: wsjLogo,
+  wsj_us: wsjLogo,
 };
 
 // API base URL: relative in production, localhost in dev
@@ -32,6 +30,7 @@ const GenerationPage = ({ selectedNews }) => {
   const [currentImageUrl, setCurrentImageUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isRateLimited, setIsRateLimited] = useState(false);
   const lastHeadlineIdRef = useRef(null);
 
   useEffect(() => {
@@ -56,6 +55,7 @@ const GenerationPage = ({ selectedNews }) => {
 
     setIsLoading(true);
     setError('');
+    setIsRateLimited(false);
 
     axios.post(`${API_BASE_URL}/api/generate-image`, {
       headlineId: selectedNews.id,
@@ -66,8 +66,13 @@ const GenerationPage = ({ selectedNews }) => {
     })
     .catch(err => {
       console.error("Image generation failed:", err);
+      const status = err?.response?.status;
       const backendDetail = err?.response?.data?.detail;
-      if (typeof backendDetail === 'string' && backendDetail.trim().length > 0) {
+
+      if (status === 429) {
+        setIsRateLimited(true);
+        setError(backendDetail || "You've generated too many cartoons. Please wait a few minutes and try again.");
+      } else if (typeof backendDetail === 'string' && backendDetail.trim().length > 0) {
         setError(backendDetail);
       } else {
         setError('Image generation failed. Please try again.');
@@ -97,8 +102,15 @@ const GenerationPage = ({ selectedNews }) => {
           {/* Image Card */}
           <div className="generation-card">
             {error ? (
-              <div className="generation-error">
-                <span className="generation-error-text">Failed to generate image</span>
+              <div className={`generation-error ${isRateLimited ? 'generation-error-rate-limit' : ''}`}>
+                {isRateLimited ? (
+                  <>
+                    <span className="generation-error-title">Slow down!</span>
+                    <span className="generation-error-text">{error}</span>
+                  </>
+                ) : (
+                  <span className="generation-error-text">Failed to generate image</span>
+                )}
               </div>
             ) : (
               <CanvasMeme
@@ -118,7 +130,7 @@ const GenerationPage = ({ selectedNews }) => {
               className="generation-source-link"
             >
               <img
-                src={FEED_LOGOS[selectedNews.feedId] || wsjLogo}
+                src={FEED_LOGOS[selectedNews.feedId]}
                 alt={selectedNews.category || 'News source'}
                 className="generation-source-logo"
               />

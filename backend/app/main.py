@@ -29,7 +29,7 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional, Tuple
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Depends, Header
+from fastapi import FastAPI, HTTPException, Depends, Header, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -135,12 +135,11 @@ MAX_NEWS_ITEMS = 30
 
 # Feed ID -> display tag shown next to each headline (RSS source)
 FEED_DISPLAY_TAGS = {
-    "cnn_top": "CNN",
     "fox_us": "FOX",
     "nbc_top": "NBC",
     "nyt_home": "NYT",
     "npr_news": "NPR",
-    "wsj_world": "WSJ",
+    "wsj_us": "WSJ",
 }
 
 # Style allowlist for image generation
@@ -224,6 +223,7 @@ def get_news(db: Session = Depends(get_db)):
                 JOIN feeds f ON i.feed_id = f.id
                 WHERE i.fetched_at >= :today_start_utc 
                   AND i.fetched_at < :tomorrow_start_utc
+                  AND i.feed_id != 'cnn_top'
                 ORDER BY i.published_at DESC NULLS LAST, i.fetched_at DESC
                 LIMIT :limit
             """),
@@ -257,6 +257,10 @@ def get_news(db: Session = Depends(get_db)):
                 feed_id = row[6] or ""
                 feed_name = row[7] or "Unknown Source"
                 source_tag = FEED_DISPLAY_TAGS.get(feed_id, feed_name)
+                # Always show "WSJ" and correct feedId for Wall Street Journal
+                if feed_id == "wsj_us" or (feed_name and "Wall Street Journal" in feed_name):
+                    source_tag = "WSJ"
+                    feed_id = "wsj_us"
 
                 news_item = {
                     "id": item_id,
@@ -364,6 +368,7 @@ def _lookup_headline_by_id(headline_id: str, db: Session) -> dict:
                     WHERE i.id::text = :headline_id
                       AND i.fetched_at >= :today_start_utc 
                       AND i.fetched_at < :tomorrow_start_utc
+                      AND i.feed_id != 'cnn_top'
                 """),
                 {
                     "headline_id": headline_id,
@@ -410,6 +415,9 @@ def _build_prompt_template(headline: str, summary: str, style: str) -> str:
     """
     Build a server-side prompt template for image generation.
     
+    The prompt is constructed entirely server-side from hard-coded instructions
+    plus the headline/summary text. The client never sends prompt text.
+    
     Args:
         headline: The headline title
         summary: The headline summary/description
@@ -418,29 +426,174 @@ def _build_prompt_template(headline: str, summary: str, style: str) -> str:
     Returns:
         Complete prompt string for image generation
     """
-    # Base template for political cartoon
     base_template = (
-        "You are a political cartoonist creating a single-panel satirical cartoon. "
-        "Create an illustration based on this news story:\n\n"
-        f"Headline: {headline}\n"
-        f"Summary: {summary}\n\n"
-        "The cartoon should be satirical, thought-provoking, and visually engaging. "
-        "Use symbolic imagery and avoid creating exact likenesses of real people. "
-        "Focus on the political or social themes of the story."
+        "TASK: Create a political cartoon illustration inspired by the following headline and summary. "
+        "The cartoon should use humor, exaggeration, and symbolism to deliver a satirical take on the situation described.\n\n"
+        f"HEADLINE: {headline}\n"
+        f"SUMMARY: {summary}\n\n"
+        "STYLE AND TONE:\n"
+        "- Classic newspaper political cartoon style with bold ink outlines, a limited color palette "
+        "(mainly black, white, gray, and 2-3 accent colors), and a hand-drawn editorial aesthetic.\n"
+        "- Witty, clever, and slightly exaggerated — never cruel, offensive, or mean-spirited.\n"
+        "- Maintain a consistent character design and drawing style, as if all cartoons come from the same cartoonist.\n"
+        "- Include visible, legible labels or captions only if they enhance the satire "
+        "(e.g. labeling symbols like 'Congress,' 'AI regulation,' or 'Public Opinion').\n\n"
+        "CONTENT REQUIREMENTS:\n"
+        "- Use visual metaphor (e.g. sinking ships, broken machines, tightropes, puppet strings) to represent abstract issues.\n"
+        "- Focus on irony and contrast — show the difference between what's said and what's happening.\n"
+        "- Represent political figures or institutions as symbolic caricatures only — never photorealistic. "
+        "Keep depictions focused on ideas, policies, and institutions rather than personal attacks.\n"
+        "- The scene should be self-contained and understandable on its own, but more meaningful with the headline.\n"
+        "- Rely on visual storytelling — avoid text-heavy dialogue.\n\n"
+        "SAFETY AND SENSITIVITY:\n"
+        "- Never depict graphic violence, hate speech, or discriminatory content.\n"
+        "- Always punch up — target power, hypocrisy, or absurdity, never vulnerable individuals or groups.\n"
+        "- Avoid content that could be construed as personally attacking or defaming any real individual.\n"
+        "- Keep the output suitable for a general audience and appropriate for a professional publication.\n"
+        "- When depicting sensitive topics, use abstract symbolism rather than literal representation.\n\n"
+        "OUTPUT FORMAT:\n"
+        "- A single detailed cartoon illustration in 16:9 aspect ratio.\n"
+        "- Center composition with a clear focal point.\n"
+        "- Include enough detail and context to make the commentary clear.\n\n"
+        "GOAL: Create a timeless, funny, and thought-provoking political cartoon that visually communicates "
+        "the essence of the headline through satire, metaphor, and exaggeration — in the spirit of "
+        "publications like The New Yorker, The Economist, or Politico."
     )
-    
-    # Add style-specific instructions
-    style_instructions = {
-        "Default": "Use a classic editorial cartoon style with clear symbolism and bold lines.",
-        "Funnier": "Make it highly exaggerated, funny, and satirical with vibrant colors and comedic elements.",
-        "Drier": "Use a more understated, dry wit approach with muted colors and subtle humor.",
-        "More sarcastic": "Emphasize irony and sarcasm with sharp visual metaphors and pointed commentary.",
-        "More wholesome": "Take a lighter, more positive approach while still maintaining the satirical edge.",
+
+    # Style-specific modifiers appended to the base prompt
+    style_modifiers = {
+        "Default": "",  # Base template already defines the default style
+        "Funnier": (
+            "\n\nSTYLE MODIFIER: Push the humor further — use more exaggeration, absurd visual analogies, "
+            "and comedic elements. Think brighter accent colors and a more playful, animated feel."
+        ),
+        "Drier": (
+            "\n\nSTYLE MODIFIER: Use a more understated, dry wit approach — muted tones, subtle irony, "
+            "and deadpan visual humor. Less is more."
+        ),
+        "More sarcastic": (
+            "\n\nSTYLE MODIFIER: Lean into sharp irony and pointed visual metaphors. "
+            "The sarcasm should be biting but still clever — never mean-spirited."
+        ),
+        "More wholesome": (
+            "\n\nSTYLE MODIFIER: Take a lighter, more optimistic angle while keeping the satirical edge. "
+            "Warmer tones, gentler humor, and a more hopeful perspective."
+        ),
     }
+
+    modifier = style_modifiers.get(style, "")
+
+    return f"{base_template}{modifier}"
+
+
+# --- Rate Limiting ---
+# Maximum number of image generation requests per IP within the time window
+RATE_LIMIT_MAX_REQUESTS = 10
+RATE_LIMIT_WINDOW_MINUTES = 5
+
+
+def _get_client_ip(request: Request) -> str:
+    """
+    Extract the client IP address from the request.
     
-    style_instruction = style_instructions.get(style, style_instructions["Default"])
+    On Vercel (behind a proxy), the real IP is in X-Forwarded-For.
+    Falls back to request.client.host for local development.
+    """
+    forwarded_for = request.headers.get("x-forwarded-for")
+    if forwarded_for:
+        # X-Forwarded-For can contain multiple IPs: "client, proxy1, proxy2"
+        # The first one is the original client IP
+        return forwarded_for.split(",")[0].strip()
     
-    return f"{base_template}\n\nStyle: {style_instruction}"
+    # Fallback for local dev (no proxy)
+    if request.client:
+        return request.client.host
+    
+    return "unknown"
+
+
+def _check_rate_limit(ip_address: str, endpoint: str, db: Session) -> dict:
+    """
+    Check if an IP has exceeded the rate limit for an endpoint.
+    
+    Counts requests within the last RATE_LIMIT_WINDOW_MINUTES minutes.
+    If under the limit, records the new request and allows it.
+    If over the limit, returns info about when the window resets.
+    
+    Args:
+        ip_address: The client's IP address
+        endpoint: The endpoint being rate-limited (e.g. "generate-image")
+        db: Database session
+        
+    Returns:
+        dict with keys:
+            - allowed (bool): Whether the request is allowed
+            - current_count (int): Number of requests in the current window
+            - retry_after_seconds (int|None): Seconds until the oldest request expires (if blocked)
+    """
+    try:
+        # Count requests in the current time window
+        result = db.execute(
+            text("""
+                SELECT COUNT(*), MIN(requested_at) as oldest
+                FROM rate_limits
+                WHERE ip_address = :ip
+                  AND endpoint = :endpoint
+                  AND requested_at > now() - INTERVAL :window
+            """),
+            {
+                "ip": ip_address,
+                "endpoint": endpoint,
+                "window": f"{RATE_LIMIT_WINDOW_MINUTES} minutes",
+            }
+        )
+        row = result.fetchone()
+        current_count = row[0] if row else 0
+        oldest_request = row[1] if row else None
+        
+        if current_count >= RATE_LIMIT_MAX_REQUESTS:
+            # Calculate how long until the oldest request falls outside the window
+            retry_after = RATE_LIMIT_WINDOW_MINUTES * 60  # default to full window
+            if oldest_request:
+                from datetime import timezone as tz
+                now_utc = datetime.now(tz.utc)
+                # Ensure oldest_request is timezone-aware
+                if oldest_request.tzinfo is None:
+                    oldest_request = oldest_request.replace(tzinfo=tz.utc)
+                window_end = oldest_request + timedelta(minutes=RATE_LIMIT_WINDOW_MINUTES)
+                retry_after = max(1, int((window_end - now_utc).total_seconds()))
+            
+            return {
+                "allowed": False,
+                "current_count": current_count,
+                "retry_after_seconds": retry_after,
+            }
+        
+        # Under the limit — record this request
+        db.execute(
+            text("""
+                INSERT INTO rate_limits (ip_address, endpoint, requested_at)
+                VALUES (:ip, :endpoint, now())
+            """),
+            {"ip": ip_address, "endpoint": endpoint}
+        )
+        db.commit()
+        
+        return {
+            "allowed": True,
+            "current_count": current_count + 1,
+            "retry_after_seconds": None,
+        }
+    
+    except Exception as e:
+        # If rate limiting fails (e.g. table doesn't exist yet), allow the request
+        # rather than blocking all image generation
+        print(f"Rate limit check failed (allowing request): {type(e).__name__}")
+        return {
+            "allowed": True,
+            "current_count": 0,
+            "retry_after_seconds": None,
+        }
 
 
 @app.get("/api/debug/news-source")
@@ -467,13 +620,31 @@ def debug_news_source(db: Session = Depends(get_db)):
         return {"source": "fallback"}
 
 @app.post("/api/generate-image")
-async def generate_image(request: ImageRequest, db: Session = Depends(get_db)):
+async def generate_image(request: ImageRequest, raw_request: Request, db: Session = Depends(get_db)):
     """
     Generates an image based on a headline ID and optional style.
     
     The prompt is constructed server-side from the headline data.
     The client must NOT send any prompt text - only headlineId and style.
+    
+    Rate limited to RATE_LIMIT_MAX_REQUESTS per RATE_LIMIT_WINDOW_MINUTES per IP.
     """
+    # --- Rate limit check ---
+    client_ip = _get_client_ip(raw_request)
+    rate_check = _check_rate_limit(client_ip, "generate-image", db)
+    
+    if not rate_check["allowed"]:
+        retry_after = rate_check["retry_after_seconds"]
+        raise HTTPException(
+            status_code=429,
+            detail=(
+                f"Rate limit exceeded. You can generate up to {RATE_LIMIT_MAX_REQUESTS} cartoons "
+                f"every {RATE_LIMIT_WINDOW_MINUTES} minutes. "
+                f"Please wait {retry_after} seconds and try again."
+            ),
+            headers={"Retry-After": str(retry_after)},
+        )
+
     # Fail loudly (but safely) if the server is not configured for image generation.
     # Never log or return the key value.
     if not os.environ.get("GEMINI_API_KEY"):

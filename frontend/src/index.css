@@ -601,6 +601,28 @@ a.footer-text:hover {
   color: #767676;
 }
 
+/* Rate limit error state */
+.generation-error-rate-limit {
+  flex-direction: column;
+  gap: 8px;
+  padding: 32px;
+  text-align: center;
+  background-color: #FEF4DF;
+}
+
+.generation-error-title {
+  font-family: 'Crimson Text', Georgia, serif;
+  font-size: 18px;
+  font-weight: 600;
+  color: #000000;
+}
+
+.generation-error-rate-limit .generation-error-text {
+  color: #767676;
+  max-width: 320px;
+  line-height: 1.33;
+}
+
 /* Source Logo (above headline) */
 .generation-source {
   display: flex;
@@ -622,7 +644,7 @@ a.footer-text:hover {
   max-width: 22px;
   max-height: 16px;
   object-fit: contain;
-  opacity: 0.7;
+  opacity: 1;
 }
 
 /* Text Content */

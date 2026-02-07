@@ -2,29 +2,36 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import filterIcon from '../assets/images/filter-icon.svg';
 import arrowDownIcon from '../assets/images/arrow-down.svg';
-import cnnLogo from '../assets/images/cnn.svg';
 import foxLogo from '../assets/images/fox-us.svg';
 import nbcLogo from '../assets/images/nbc.svg';
 import nytLogo from '../assets/images/nyt.svg';
 import nprLogo from '../assets/images/npr.svg';
-import wsjLogo from '../assets/images/wsj-logo.png';
+import wsjLogo from '../assets/images/wsj.png';
 
 const FEED_LOGOS = {
-  cnn_top: cnnLogo,
   fox_us: foxLogo,
   nbc_top: nbcLogo,
   nyt_home: nytLogo,
   npr_news: nprLogo,
-  wsj_world: wsjLogo,
+  wsj_us: wsjLogo,
+};
+
+// Feed ID -> short display label (matches backend FEED_DISPLAY_TAGS)
+const FEED_LABELS = {
+  fox_us: 'FOX',
+  nbc_top: 'NBC',
+  nyt_home: 'NYT',
+  npr_news: 'NPR',
+  wsj_us: 'WSJ',
 };
 
 // Filter dropdown options (alphabetical)
 const FEED_OPTIONS = [
-  { id: 'cnn_top', label: 'CNN' },
   { id: 'fox_us', label: 'Fox News' },
   { id: 'nbc_top', label: 'NBC News' },
   { id: 'nyt_home', label: 'New York Times' },
   { id: 'npr_news', label: 'NPR' },
+  { id: 'wsj_us', label: 'WSJ' },
 ];
 
 const ITEMS_PER_PAGE = 5;
@@ -181,8 +188,8 @@ const LandingPage = ({ newsItems, selectedNews, setSelectedNews, isLoading }) =>
                       rel="noopener noreferrer"
                       className="news-item-meta"
                     >
-                      <img src={FEED_LOGOS[item.feedId] || wsjLogo} alt="" className="news-item-logo" />
-                      <span className="news-item-category">{item.category}</span>
+                      <img src={FEED_LOGOS[item.feedId]} alt="" className="news-item-logo" />
+                      <span className="news-item-category">{FEED_LABELS[item.feedId] || item.category}</span>
                     </a>
                   </div>
                 </div>

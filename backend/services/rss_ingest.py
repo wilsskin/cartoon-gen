@@ -8,7 +8,9 @@ Optimized for Vercel Hobby plan (10 second timeout) using parallel feed fetching
 """
 
 import json
+import os
 import sys
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from datetime import datetime
@@ -30,6 +32,52 @@ from db import engine
 # Parallel fetching configuration for Vercel Hobby plan (10s timeout)
 MAX_WORKERS = 6  # Fetch all feeds concurrently
 FETCH_TIMEOUT = 5  # Aggressive timeout per feed (seconds)
+FETCH_RETRIES = 3  # Retries with backoff for 429/5xx/timeouts
+
+# Browser-like headers to avoid bot blocking (e.g. WSJ/CDN throttling)
+DEFAULT_RSS_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/120.0.0.0 Safari/537.36"
+    ),
+    "Accept": "application/rss+xml, application/xml;q=0.9, text/xml;q=0.8, */*;q=0.5",
+    "Accept-Language": "en-US,en;q=0.9",
+}
+
+# When True, save raw XML to a temp file when a feed returns 200 but parse fails or 0 entries
+DEBUG_RSS_DUMP = os.environ.get("DEBUG_RSS_DUMP", "false").lower() in ("true", "1", "yes")
+
+
+def _log_feed_result(
+    feed_name: str,
+    url: str,
+    status: Optional[int],
+    bytes_count: int,
+    parsed_count: int,
+    kept_count: int,
+    error_type: Optional[str] = None,
+) -> None:
+    """Structured log for each feed: feed_name, url, status, bytes, parsed_count, kept_count, error_type."""
+    print(
+        f"INGEST: feed_name={feed_name!r} url={url[:80]!r} status={status} bytes={bytes_count} "
+        f"parsed_count={parsed_count} kept_count={kept_count} error_type={error_type!r}"
+    )
+
+
+def _dump_feed_xml(feed_id: str, content: bytes) -> Optional[str]:
+    """If DEBUG_RSS_DUMP, save raw XML to a temp file and return path; else return None."""
+    if not DEBUG_RSS_DUMP or not content:
+        return None
+    try:
+        import tempfile
+        fd, path = tempfile.mkstemp(prefix=f"rss_{feed_id}_", suffix=".xml")
+        with os.fdopen(fd, "wb") as f:
+            f.write(content)
+        return path
+    except Exception as e:
+        print(f"INGEST: DEBUG_RSS_DUMP write failed: {e}")
+        return None
+
 
 # Data retention configuration
 ITEMS_RETENTION_DAYS = 7    # Keep news items for 7 days
@@ -188,17 +236,51 @@ def insert_items(db: Session, feed_id: str, entries: List[Dict], max_items: int)
     return inserted
 
 
-def fetch_rss_feed(url: str, timeout: int, etag: Optional[str] = None, 
+def fetch_rss_feed(url: str, timeout: int, etag: Optional[str] = None,
                   last_modified: Optional[str] = None) -> requests.Response:
-    """Fetch RSS feed with conditional headers"""
-    headers = {}
+    """
+    Fetch RSS feed with browser-like headers and optional retries.
+
+    Uses User-Agent, Accept, Accept-Language to reduce bot blocking (e.g. WSJ).
+    Retries with exponential backoff on 429, 5xx, and timeouts.
+    """
+    headers = dict(DEFAULT_RSS_HEADERS)
     if etag:
-        headers['If-None-Match'] = etag
+        headers["If-None-Match"] = etag
     if last_modified:
-        headers['If-Modified-Since'] = last_modified
-    
-    response = requests.get(url, headers=headers, timeout=timeout)
-    return response
+        headers["If-Modified-Since"] = last_modified
+
+    last_exception = None
+    last_response = None
+    for attempt in range(FETCH_RETRIES):
+        try:
+            response = requests.get(url, headers=headers, timeout=timeout)
+            last_response = response
+            # Retry on rate limit or server errors
+            if response.status_code in (429, 500, 502, 503, 504):
+                if attempt < FETCH_RETRIES - 1:
+                    time.sleep(2 ** attempt)
+                    continue
+                raise requests.exceptions.HTTPError(
+                    f"HTTP {response.status_code} after {FETCH_RETRIES} attempts",
+                    response=response,
+                )
+            return response
+        except requests.exceptions.Timeout as e:
+            last_exception = e
+            if attempt < FETCH_RETRIES - 1:
+                time.sleep(2 ** attempt)
+        except requests.exceptions.RequestException as e:
+            last_exception = e
+            raise
+    if last_exception:
+        raise last_exception
+    if last_response is not None:
+        raise requests.exceptions.HTTPError(
+            f"HTTP {last_response.status_code} after {FETCH_RETRIES} attempts",
+            response=last_response,
+        )
+    raise RuntimeError("fetch_rss_feed: no response or exception")
 
 
 def cleanup_old_data() -> Dict[str, int]:
@@ -212,7 +294,7 @@ def cleanup_old_data() -> Dict[str, int]:
     
     Returns dict with counts of deleted rows per table.
     """
-    deleted = {"items": 0, "runs": 0, "feed_run_errors": 0}
+    deleted = {"items": 0, "runs": 0, "feed_run_errors": 0, "rate_limits": 0}
     
     with engine.begin() as conn:
         # Delete old items (news headlines older than 7 days)
@@ -247,12 +329,27 @@ def cleanup_old_data() -> Dict[str, int]:
             {"days": f"{RUNS_RETENTION_DAYS} days"}
         )
         deleted["runs"] = result.rowcount
+        
+        # Delete old rate limit entries (older than 1 hour — only 5 min needed, but
+        # keep 1 hour for debugging visibility)
+        try:
+            result = conn.execute(
+                text("""
+                    DELETE FROM rate_limits
+                    WHERE requested_at < now() - INTERVAL '1 hour'
+                    RETURNING id
+                """)
+            )
+            deleted["rate_limits"] = result.rowcount
+        except Exception:
+            # Table may not exist yet — don't fail cleanup
+            pass
     
     total = sum(deleted.values())
     if total > 0:
         print(f"CLEANUP: Deleted {deleted['items']} items, {deleted['runs']} runs, "
-              f"{deleted['feed_run_errors']} errors (retention: items={ITEMS_RETENTION_DAYS}d, "
-              f"runs/errors={RUNS_RETENTION_DAYS}d)")
+              f"{deleted['feed_run_errors']} errors, {deleted['rate_limits']} rate_limit entries "
+              f"(retention: items={ITEMS_RETENTION_DAYS}d, runs/errors={RUNS_RETENTION_DAYS}d)")
     else:
         print("CLEANUP: No old data to delete")
     
@@ -292,7 +389,7 @@ def process_feed(db: Session, feed_data: Dict, defaults: Dict, run_id: str) -> D
     feed_id = feed_data["id"]
     feed_url = feed_data["url"]
     timeout = defaults.get("timeoutSeconds", 10)
-    max_items = defaults.get("maxItemsPerFeed", 5)
+    max_items = defaults.get("maxItemsPerFeed", 3)
     
     result = {
         "feed_id": feed_id,
@@ -394,7 +491,17 @@ def run_rss_ingest() -> Dict[str, Any]:
     # Filter enabled feeds
     enabled_feeds = [f for f in feeds if f.get("enabled", defaults.get("enabled", True))]
     total_feeds = len(enabled_feeds)
-    
+    config_feed_ids = {f["id"] for f in feeds}
+
+    # Remove feeds (and their items) no longer in config (e.g. CNN removed)
+    with engine.begin() as conn:
+        existing = conn.execute(text("SELECT id FROM feeds")).fetchall()
+        for (feed_id,) in existing:
+            if feed_id not in config_feed_ids:
+                conn.execute(text("DELETE FROM items WHERE feed_id = :id"), {"id": feed_id})
+                conn.execute(text("DELETE FROM feeds WHERE id = :id"), {"id": feed_id})
+                print(f"INGEST: Removed feed {feed_id} (no longer in config)")
+
     # Start run record
     run_id = str(uuid4())
     with engine.begin() as conn:
@@ -461,9 +568,16 @@ def run_rss_ingest() -> Dict[str, Any]:
                 "http_status": response.status_code if response else None,
             }
             
+            feed_name = feed_data.get("name", feed_id)
+            feed_url = feed_data.get("url", "")
+
             if error:
                 # Fetch failed
                 feeds_failed += 1
+                _log_feed_result(
+                    feed_name, feed_url, status=None, bytes_count=0,
+                    parsed_count=0, kept_count=0, error_type="http_error",
+                )
                 print(f"INGEST: Feed {feed_id} failed: {error}")
                 db.execute(
                     text("""
@@ -483,32 +597,54 @@ def run_rss_ingest() -> Dict[str, Any]:
                 # Not modified - update last_fetched_at only
                 feeds_succeeded += 1
                 update_feed_metadata(db, feed_id, metadata.get("etag"), metadata.get("last_modified"))
+                _log_feed_result(
+                    feed_name, feed_url, status=304, bytes_count=0,
+                    parsed_count=0, kept_count=0, error_type=None,
+                )
                 print(f"INGEST: Feed {feed_id} not modified (304), skipped")
             elif response.status_code == 200:
                 # Success - parse and insert
+                body_len = len(response.content) if response.content else 0
                 try:
                     feed = feedparser.parse(response.content)
-                    
+                    parsed_count = len(feed.entries) if feed.entries else 0
+
                     if feed.bozo and feed.bozo_exception:
                         raise Exception(f"RSS parse error: {feed.bozo_exception}")
-                    
+
                     # Extract headers
                     etag = response.headers.get('ETag')
                     last_modified = response.headers.get('Last-Modified')
-                    
+
                     # Insert items
                     inserted = insert_items(db, feed_id, feed.entries, max_items)
                     result["inserted"] = inserted
                     items_inserted += inserted
                     feeds_succeeded += 1
-                    
-                    # Update feed metadata
+
+                    # Debug dump if we got 200 but 0 entries (helps diagnose parser/env issues)
+                    if parsed_count == 0 and response.content:
+                        dump_path = _dump_feed_xml(feed_id, response.content)
+                        if dump_path:
+                            print(f"INGEST: DEBUG_RSS_DUMP saved 0-entry feed XML to {dump_path}")
+
+                    _log_feed_result(
+                        feed_name, feed_url, status=200, bytes_count=body_len,
+                        parsed_count=parsed_count, kept_count=inserted, error_type=None,
+                    )
                     update_feed_metadata(db, feed_id, etag, last_modified)
                     print(f"INGEST: Feed {feed_id} processed: {inserted} items")
-                    
+
                 except Exception as e:
                     feeds_failed += 1
                     error_msg = str(e)
+                    dump_path = _dump_feed_xml(feed_id, response.content if response else b"")
+                    if dump_path:
+                        print(f"INGEST: DEBUG_RSS_DUMP saved parse-failure XML to {dump_path}")
+                    _log_feed_result(
+                        feed_name, feed_url, status=200, bytes_count=body_len,
+                        parsed_count=0, kept_count=0, error_type="parse_error",
+                    )
                     print(f"INGEST: Feed {feed_id} parse error: {error_msg}")
                     db.execute(
                         text("""
@@ -527,6 +663,11 @@ def run_rss_ingest() -> Dict[str, Any]:
             else:
                 # Unexpected HTTP status
                 feeds_failed += 1
+                body_len = len(response.content) if response.content else 0
+                _log_feed_result(
+                    feed_name, feed_url, status=response.status_code, bytes_count=body_len,
+                    parsed_count=0, kept_count=0, error_type="http_error",
+                )
                 error_msg = f"HTTP {response.status_code}: {response.reason}"
                 print(f"INGEST: Feed {feed_id} failed: {error_msg}")
                 db.execute(

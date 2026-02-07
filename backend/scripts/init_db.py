@@ -146,6 +146,23 @@ def init_schema():
             CREATE INDEX IF NOT EXISTS feed_run_errors_feed_id_idx 
             ON feed_run_errors(feed_id);
         """))
+        
+        # 6) Table: rate_limits (per-IP rate limiting for image generation)
+        print("  Creating rate_limits table...")
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS rate_limits (
+                id SERIAL PRIMARY KEY,
+                ip_address TEXT NOT NULL,
+                endpoint TEXT NOT NULL,
+                requested_at TIMESTAMPTZ NOT NULL DEFAULT now()
+            );
+        """))
+        
+        # Index on rate_limits for fast lookups by IP + time window
+        conn.execute(text("""
+            CREATE INDEX IF NOT EXISTS rate_limits_ip_endpoint_time_idx 
+            ON rate_limits(ip_address, endpoint, requested_at);
+        """))
     
     print("✓ Database schema initialized successfully!")
 
