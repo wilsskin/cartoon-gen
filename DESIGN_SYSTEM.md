@@ -3,9 +3,9 @@
 ## Typography
 
 - **Primary font:** 'Crimson Text', Georgia, serif
-- **Sizes:** 14px (small), 18px (base), 36px (display)
+- **Sizes:** 14px (small), 20px (base), 36px (display)
 - **Letter-spacing:** All 14px text uses -1% (`-0.01em`)
-- **Line-height:** 1.15 (headlines), 1.33 (body)
+- **Line-height:** 1.2 (headlines), 1.33 (body)
 
 ## Colors
 

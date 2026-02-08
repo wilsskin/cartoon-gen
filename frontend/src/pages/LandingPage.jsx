@@ -31,7 +31,7 @@ const FEED_OPTIONS = [
   { id: 'nbc_top', label: 'NBC News' },
   { id: 'nyt_home', label: 'New York Times' },
   { id: 'npr_news', label: 'NPR' },
-  { id: 'wsj_us', label: 'WSJ' },
+  { id: 'wsj_us', label: 'Wall Street Journal' },
 ];
 
 const ITEMS_PER_PAGE = 5;

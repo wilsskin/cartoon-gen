@@ -2,7 +2,6 @@ import { useRef, useEffect, useState } from 'react';
 
 const CanvasMeme = ({ backgroundImageUrl, captionText, isLoading }) => {
   const canvasRef = useRef(null);
-  const downloadLinkRef = useRef(null);
   const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
@@ -24,14 +23,6 @@ const CanvasMeme = ({ backgroundImageUrl, captionText, isLoading }) => {
 
       // Draw the background image
       context.drawImage(img, 0, 0);
-
-      // Update the download link with the new canvas content
-      try {
-        const dataUrl = canvas.toDataURL('image/png');
-        downloadLinkRef.current.href = dataUrl;
-      } catch (err) {
-        console.error("Could not update canvas data URL:", err);
-      }
     };
 
     img.onerror = () => {
@@ -58,50 +49,55 @@ const CanvasMeme = ({ backgroundImageUrl, captionText, isLoading }) => {
       <canvas
         ref={canvasRef}
         style={{
-          border: '2px solid #FCE9BE',
+          border: 'none',
           borderRadius: '8px',
           width: '512px',
           height: '512px',
+          maxWidth: '100%',
+          maxHeight: '100%',
+          objectFit: 'contain',
           display: isLoading ? 'none' : 'block'
         }}
       />
       {isLoading && (
-        <div style={{
-          width: '512px',
-          height: '512px',
-          border: '2px solid #FCE9BE',
-          borderRadius: '8px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: '#FCE9BE',
-          color: '#1a1a1a',
-          fontSize: '20px',
-          fontWeight: '600',
-          fontFamily: '"Crimson Text", Georgia, serif'
-        }}>
-          <p>Loading...</p>
+        <div
+          className="generation-loading-container"
+          style={{
+            width: '512px',
+            height: '512px',
+            maxWidth: '100%',
+            maxHeight: '100%',
+            border: 'none',
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: '#f5f5f5',
+          }}
+          aria-hidden="true"
+        >
+          <div className="generation-loading-square-wrap">
+            <svg
+              className="generation-loading-square-svg"
+              viewBox="0 0 48 48"
+              width="48"
+              height="48"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+            >
+              {/* Square path: bottom (L→R), right (↑), top (R→L), left (↓). Total length 192. */}
+              <path
+                className="generation-loading-square-path"
+                d="M 0 48 L 48 48 L 48 0 L 0 0 L 0 48"
+                stroke="#000000"
+                strokeWidth="3"
+                strokeLinecap="square"
+              />
+            </svg>
+          </div>
         </div>
       )}
-      <a
-        ref={downloadLinkRef}
-        href="#"
-        download="satire-meme.png"
-        className="download-btn"
-        style={{
-          display: imageError || isLoading ? 'none' : 'block',
-          textDecoration: 'none',
-          color: 'white',
-          padding: '0.6em 1.2em'
-        }}
-        onClick={(e) => {
-          if (!downloadLinkRef.current.href || downloadLinkRef.current.href === '#') {
-            e.preventDefault();
-          }
-        }}
-      >
-        Download Meme
-      </a>
     </div>
   );
 };

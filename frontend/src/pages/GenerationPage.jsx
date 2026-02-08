@@ -132,6 +132,9 @@ const GenerationPage = ({ selectedNews }) => {
     return null;
   }
 
+  const d = new Date();
+  const downloadFilename = `cartoongen_${d.toLocaleString('en-US', { month: 'short' }).toLowerCase()}${d.getDate()}.png`;
+
   return (
     <div className="generation-page">
       {/* Main Content */}
@@ -215,9 +218,20 @@ const GenerationPage = ({ selectedNews }) => {
             )}
           </div>
 
-          {/* Action Icons */}
+          {/* Action Icons - leftmost is download */}
           <div className="generation-actions">
             <img src={actionIcons} alt="Actions" className="action-icons" />
+            {currentImageUrl && !isLoading && !error ? (
+              <a
+                href={currentImageUrl}
+                download={downloadFilename}
+                className="generation-action-download"
+                title="Download cartoon"
+                aria-label="Download cartoon as PNG"
+              />
+            ) : (
+              <span className="generation-action-download generation-action-download-disabled" aria-hidden="true" />
+            )}
           </div>
         </div>
       </div>
