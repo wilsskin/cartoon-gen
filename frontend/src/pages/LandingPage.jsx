@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import filterIcon from '../assets/images/filter-icon.svg';
 import arrowDownIcon from '../assets/images/arrow-down.svg';
@@ -7,6 +7,11 @@ import nbcLogo from '../assets/images/nbc.svg';
 import nytLogo from '../assets/images/nyt.svg';
 import nprLogo from '../assets/images/npr.svg';
 import wsjLogo from '../assets/images/wsj.png';
+import heroCartoon1 from '../assets/images/hero-cartoon-1.png';
+import heroCartoon2 from '../assets/images/hero-cartoon-2.png';
+import heroCartoon3 from '../assets/images/hero-cartoon-3.png';
+
+const HERO_IMAGES = [heroCartoon1, heroCartoon2, heroCartoon3];
 
 const FEED_LOGOS = {
   fox_us: foxLogo,
@@ -36,10 +41,12 @@ const FEED_OPTIONS = [
 
 const ITEMS_PER_PAGE = 5;
 
-const LandingPage = ({ newsItems, selectedNews, setSelectedNews, isLoading }) => {
+const LandingPage = ({ newsItems, isLoading }) => {
   const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [selectedFeed, setSelectedFeed] = useState(null);
+  const [galleryOpen, setGalleryOpen] = useState(false);
+  const [galleryIndex, setGalleryIndex] = useState(0);
   const dropdownRef = useRef(null);
   const buttonRef = useRef(null);
   const navigate = useNavigate();
@@ -94,10 +101,39 @@ const LandingPage = ({ newsItems, selectedNews, setSelectedNews, isLoading }) =>
   };
 
   const handleItemClick = (item) => {
-    setSelectedNews(item);
     setSelectedFeed(null); // Reset filter when navigating to generate
-    navigate('/generate');
+    navigate(`/generate/${item.id}`);
   };
+
+  const openGallery = useCallback((index) => {
+    setGalleryIndex(index);
+    setGalleryOpen(true);
+  }, []);
+
+  const closeGallery = useCallback(() => setGalleryOpen(false), []);
+
+  const galleryPrev = useCallback(() => {
+    setGalleryIndex((i) => (i - 1 + HERO_IMAGES.length) % HERO_IMAGES.length);
+  }, []);
+
+  const galleryNext = useCallback(() => {
+    setGalleryIndex((i) => (i + 1) % HERO_IMAGES.length);
+  }, []);
+
+  useEffect(() => {
+    if (!galleryOpen) return;
+    const handleKey = (e) => {
+      if (e.key === 'Escape') closeGallery();
+      if (e.key === 'ArrowLeft') galleryPrev();
+      if (e.key === 'ArrowRight') galleryNext();
+    };
+    document.addEventListener('keydown', handleKey);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', handleKey);
+      document.body.style.overflow = '';
+    };
+  }, [galleryOpen, closeGallery, galleryPrev, galleryNext]);
 
   return (
     <div className="landing-page">
@@ -113,9 +149,76 @@ const LandingPage = ({ newsItems, selectedNews, setSelectedNews, isLoading }) =>
                   Generate political cartoons from todays top headlines
                 </div>
               </div>
-              <div className="hero-image-placeholder">
-                {/* Hero image placeholder */}
+              <div className="hero-images-container">
+                <div className="hero-images-overlay" aria-hidden="true">
+                  <div
+                    className="hero-image-card hero-image-card-1"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => openGallery(0)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openGallery(0); } }}
+                    aria-label="View example cartoon 1"
+                  >
+                    <img src={heroCartoon1} alt="" />
+                  </div>
+                  <div
+                    className="hero-image-card hero-image-card-2"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => openGallery(1)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openGallery(1); } }}
+                    aria-label="View example cartoon 2"
+                  >
+                    <img src={heroCartoon2} alt="" />
+                  </div>
+                  <div
+                    className="hero-image-card hero-image-card-3"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => openGallery(2)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openGallery(2); } }}
+                    aria-label="View example cartoon 3"
+                  >
+                    <img src={heroCartoon3} alt="" />
+                  </div>
+                </div>
               </div>
+
+              {galleryOpen && (
+                <div
+                  className="hero-gallery-backdrop"
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label="Example cartoon gallery"
+                  onClick={(e) => e.target === e.currentTarget && closeGallery()}
+                >
+                  <div className="hero-gallery-content" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      type="button"
+                      className="hero-gallery-close"
+                      onClick={closeGallery}
+                      aria-label="Close gallery"
+                    />
+                    <button
+                      type="button"
+                      className="hero-gallery-prev"
+                      onClick={galleryPrev}
+                      aria-label="Previous image"
+                    >
+                      <span aria-hidden="true">‹</span>
+                    </button>
+                    <img src={HERO_IMAGES[galleryIndex]} alt="" />
+                    <button
+                      type="button"
+                      className="hero-gallery-next"
+                      onClick={galleryNext}
+                      aria-label="Next image"
+                    >
+                      <span aria-hidden="true">›</span>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -220,11 +323,11 @@ const LandingPage = ({ newsItems, selectedNews, setSelectedNews, isLoading }) =>
         <div className="landing-footer">
           <div className="footer-left">
             <span className="footer-text">©2026 CartoonGen</span>
-            <span className="footer-text">Built by Wilson Skinner & Aryn Dagnas</span>
+            <span className="footer-text">Built by <a href="https://wilsonskinner.com/" className="footer-link">Wilson Skinner</a> & <a href="#" className="footer-link">Aryn Dagnas</a></span>
           </div>
           <div className="footer-right">
             <a href="#" className="footer-text">How it works</a>
-            <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="footer-text">Github repo</a>
+            <a href="https://github.com/wilsskin/cartoon-gen" target="_blank" rel="noopener noreferrer" className="footer-text">Github repo</a>
           </div>
         </div>
       </div>

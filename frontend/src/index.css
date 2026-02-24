@@ -43,7 +43,7 @@ body {
 }
 
 .header-content {
-  max-width: 696px;
+  max-width: 576px;
   margin: 0 auto;
   padding: 8px 48px;
   display: flex;
@@ -80,7 +80,7 @@ body {
 }
 
 .landing-container {
-  max-width: 696px;
+  max-width: 576px;
   margin: 0 auto;
   padding: 0;
   display: flex;
@@ -109,7 +109,8 @@ body {
   line-height: 1.33;
   letter-spacing: -0.04em;
   color: #000000;
-  width: 600px;
+  width: 100%;
+  max-width: 100%;
   margin-bottom: 0;
   padding-top: 32px;
 }
@@ -117,14 +118,18 @@ body {
 .hero-content {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  width: 480px;
+  gap: 12px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   padding-top: 0;
   padding-bottom: 24px;
 }
 
 .hero-subtitle-container {
-  width: 480px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   border-radius: 8px;
   padding-bottom: 16px;
 }
@@ -133,16 +138,213 @@ body {
   font-family: 'Crimson Text', Georgia, serif;
   font-size: 20px;
   font-weight: 400;
-  line-height: 1;
+  line-height: 1.33;
   color: #767676;
+  max-width: 100%;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
-.hero-image-placeholder {
-  width: 411.49px;
-  height: 162.79px;
+/* Hero: three overlaid example images (matches Figma Group 3) */
+.hero-images-container {
+  width: 100%;
+  max-width: 100%;
+  padding-left: 2.2%;
+  padding-right: 2.2%;
+  box-sizing: border-box;
+}
+
+.hero-images-overlay {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 520 / 205.72;
+  min-height: 0;
+}
+
+.hero-image-card {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #000000;
   border-radius: 8px;
-  background-color: #F2F2F2;
-  border: 1px solid #ACACAC;
+  overflow: hidden;
+  box-sizing: border-box;
+  cursor: pointer;
+  transition: transform 0.2s ease, z-index 0s;
+}
+
+.hero-image-card:hover {
+  z-index: 10;
+}
+
+.hero-image-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  pointer-events: none;
+}
+
+/* All three cards: same size. Slight offsets and rotation for overlap. */
+.hero-image-card-1 {
+  left: 0;
+  top: 0.09%;
+  width: 36%;
+  height: 94%;
+  z-index: 1;
+  transform: rotate(-8deg);
+}
+
+.hero-image-card-1:hover {
+  transform: rotate(-8deg) translateY(-4px);
+}
+
+.hero-image-card-2 {
+  left: 32%;
+  top: 2.88%;
+  width: 36%;
+  height: 94%;
+  z-index: 2;
+  transform: rotate(4deg);
+}
+
+.hero-image-card-2:hover {
+  transform: rotate(4deg) translateY(-4px);
+}
+
+.hero-image-card-3 {
+  left: 64%;
+  top: 0;
+  width: 36%;
+  height: 94%;
+  z-index: 3;
+  transform: rotate(-8deg);
+}
+
+.hero-image-card-3:hover {
+  transform: rotate(-8deg) translateY(-4px);
+}
+
+/* Hero gallery lightbox (480×480, centered, with close and prev/next) – design system aligned */
+.hero-gallery-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  box-sizing: border-box;
+}
+
+.hero-gallery-content {
+  position: relative;
+  width: 480px;
+  height: 480px;
+  max-width: 100%;
+  max-height: calc(100vh - 48px);
+  flex-shrink: 0;
+}
+
+.hero-gallery-content img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  background: #FFFFFF;
+  border-radius: 8px;
+}
+
+.hero-gallery-close {
+  position: absolute;
+  top: -44px;
+  right: 0;
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(118, 118, 118, 0.15);
+  background: #FFFFFF;
+  color: #000000;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background-color 150ms cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+.hero-gallery-close:hover {
+  background-color: #f5f5f5;
+}
+
+.hero-gallery-close::after {
+  content: '×';
+  line-height: 1;
+  display: block;
+}
+
+.hero-gallery-prev,
+.hero-gallery-next {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  border: 1px solid rgba(118, 118, 118, 0.15);
+  background: #FFFFFF;
+  color: #000000;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background-color 150ms cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+.hero-gallery-prev:hover,
+.hero-gallery-next:hover {
+  background-color: #f5f5f5;
+}
+
+/* Center arrow glyphs optically inside the circle */
+.hero-gallery-prev span,
+.hero-gallery-next span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  line-height: 1;
+  margin: 0;
+  padding: 0;
+}
+
+.hero-gallery-prev {
+  left: -56px;
+}
+
+.hero-gallery-next {
+  right: -56px;
+}
+
+@media (max-width: 600px) {
+  .hero-gallery-prev {
+    left: 8px;
+  }
+  .hero-gallery-next {
+    right: 8px;
+  }
+  .hero-gallery-content {
+    width: min(480px, 100%);
+    height: min(480px, calc(100vh - 48px));
+  }
 }
 
 /* Filter Section */
@@ -245,11 +447,11 @@ body {
   color: #000000;
 }
 
-/* News List Section */
+/* News List Section - fills container (no max-width) */
 .news-list-section {
   display: flex;
   flex-direction: column;
-  width: 480px;
+  width: 100%;
   padding-top: 8px;
 }
 
@@ -415,7 +617,7 @@ body {
 
 .recently-created-title {
   font-family: 'Crimson Pro', serif;
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 400;
   line-height: 1.11;
   letter-spacing: -0.02em;
@@ -504,14 +706,26 @@ body {
 }
 
 a.footer-text:hover {
-  opacity: 0.8;
+  color: #000000;
+}
+
+/* Footer name links (e.g. Built by Name & Name) */
+.footer-link {
+  color: inherit;
+  text-decoration: none;
+  font: inherit;
+  transition: color 0.15s ease;
+}
+
+.footer-link:hover {
+  color: #000000;
 }
 
 /* Generation Page - New Figma-based styles */
 .generation-page {
   display: flex;
   flex-direction: column;
-  max-width: 696px;
+  max-width: 576px;
   width: 100%;
   margin: 0 auto;
   background-color: #FFFFFF;
@@ -526,23 +740,29 @@ a.footer-text:hover {
   padding: 48px 48px 0;
 }
 
-/* Back Button */
+/* Back Button - width fits content so hover is only on the button; left-aligned */
 .generation-back {
   display: flex;
   flex-direction: row;
   align-items: center;
   gap: 4px;
   padding: 0 0 8px;
-  width: 408px;
+  width: fit-content;
   cursor: pointer;
+  align-self: flex-start;
 }
 
-.generation-back:hover {
-  opacity: 0.7;
+.generation-back:hover .back-text {
+  color: #000000;
+}
+
+.generation-back:hover .back-arrow {
+  filter: brightness(0);
 }
 
 .back-arrow {
   display: block;
+  transition: filter 0.15s ease;
 }
 
 .back-text {
@@ -552,20 +772,21 @@ a.footer-text:hover {
   line-height: 1.3;
   color: #767676;
   text-align: center;
+  transition: color 0.15s ease;
 }
 
-/* Card Container */
+/* Card Container - fills generation main width */
 .generation-card-container {
   display: flex;
   flex-direction: column;
-  width: 408px;
+  width: 100%;
   padding: 0 0 48px;
 }
 
-/* Image Card */
+/* Image Card - fills container, square aspect */
 .generation-card {
   width: 100%;
-  height: 408px;
+  aspect-ratio: 1 / 1;
   border-radius: 8px;
   border: 1px solid rgba(118, 118, 118, 0.3);
   display: flex;
@@ -590,9 +811,8 @@ a.footer-text:hover {
 .generation-card canvas {
   flex: 1;
   min-height: 0;
-  max-width: 100%;
-  width: auto;
-  height: auto;
+  width: 100%;
+  height: 100%;
   border: none;
   border-radius: 0;
   object-fit: contain;
@@ -602,8 +822,8 @@ a.footer-text:hover {
 .generation-loading-container {
   flex: 1;
   min-height: 0;
-  max-width: 100%;
-  max-height: 100%;
+  width: 100%;
+  height: 100%;
 }
 
 .generation-loading-square-wrap {
@@ -709,6 +929,29 @@ a.footer-text:hover {
   color: #000;
 }
 
+/* Headline no longer available (e.g. stale or shared link) */
+.generation-unavailable {
+  font-family: 'Crimson Text', Georgia, serif;
+  font-size: 14px;
+  letter-spacing: -0.01em;
+  color: #767676;
+  padding: 16px 0;
+}
+
+.generation-unavailable-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: #000000;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.generation-unavailable-link:hover {
+  opacity: 0.8;
+}
+
 .generation-error-details-content {
   margin-top: 8px;
   padding: 12px;
@@ -734,7 +977,7 @@ a.footer-text:hover {
 
 .generation-error-title {
   font-family: 'Crimson Text', Georgia, serif;
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 600;
   color: #000000;
 }
@@ -763,8 +1006,8 @@ a.footer-text:hover {
 
 .generation-source-logo {
   display: block;
-  max-width: 22px;
-  max-height: 16px;
+  max-width: 26px;
+  max-height: 20px;
   object-fit: contain;
   opacity: 1;
 }
@@ -779,7 +1022,7 @@ a.footer-text:hover {
 
 .generation-headline {
   font-family: 'Crimson Text', Georgia, serif;
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 700;
   line-height: 1.15;
   letter-spacing: -0.015em;
@@ -795,36 +1038,118 @@ a.footer-text:hover {
   color: #595959;
 }
 
-/* Action Icons - leftmost icon is download (overlay) */
+/* Action Icons - download, copy, regenerate. Each button 40×40, gap 16px, left-aligned. */
 .generation-actions {
   display: flex;
   flex-direction: row;
+  align-items: center;
   gap: 8px;
   position: relative;
+  align-self: flex-start;
+  width: max-content; /* row is exactly 152px (40+16+40+16+40) */
 }
 
-.action-icons {
-  cursor: pointer;
+/* Disabled state while image is generating: 0.5 opacity, no pointer events */
+.generation-actions.generation-actions-loading {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* Each action has its own SVG inside (40×40) so hitbox and icon always align */
+.action-icon-svg {
   display: block;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
 }
 
-.action-icons:hover {
-  opacity: 0.8;
-}
-
-/* Download overlay: covers first icon only (SVG is 112x32, ~37px per icon) */
-.generation-action-download {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 38px;
-  height: 32px;
+/* Each button is 40×40 (square) */
+.generation-action {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
   z-index: 1;
   cursor: pointer;
+  border: none;
+  background: none;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
 }
 
-.generation-action-download-disabled {
+/* Hover: darker background (38×38, 1px inset) — same for all since icon is inside button */
+.generation-action::before {
+  content: '';
+  position: absolute;
+  left: 1px;
+  top: 1px;
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  background-color: rgba(0, 0, 0, 0.05);
+  opacity: 0;
+  transition: opacity 150ms ease;
   pointer-events: none;
+}
+
+.generation-action:hover::before,
+.generation-action:focus-visible::before {
+  opacity: 1;
+}
+
+/* Hover: darken the SVG rect border inside the hovered action */
+.action-icon-border {
+  transition: stroke-opacity 150ms ease;
+}
+.generation-action:hover .action-icon-border,
+.generation-action:focus-visible .action-icon-border {
+  stroke-opacity: 0.4;
+}
+
+.generation-action-disabled {
+  pointer-events: none;
+  cursor: default;
+}
+
+/* Tooltip: centered below the icon, 4px gap */
+.generation-action-tooltip {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 2px 4px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 11px;
+  font-weight: 400;
+  color: #ffffff;
+  background-color: #1a1a1a;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 150ms cubic-bezier(0.25, 0.1, 0.25, 1),
+              visibility 150ms cubic-bezier(0.25, 0.1, 0.25, 1);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.generation-action-tooltip[data-visible="true"] {
+  opacity: 1;
+  visibility: visible;
+}
+
+.generation-action-tooltip-copy-success {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.generation-action-tooltip-check {
+  flex-shrink: 0;
 }
 
 /* Generation Footer - push to bottom */
@@ -891,60 +1216,22 @@ canvas {
   transform: translateY(-2px);
 }
 
-/* Responsive Design */
-@media (max-width: 768px) {
+/* Responsive: at 576px and below, reduce side padding to 24px. Content fills container. */
+@media (max-width: 576px) {
   .header-content {
-    padding: 8px 16px;
-  }
-
-  .landing-container {
-    max-width: 100%;
+    padding: 8px 24px;
   }
 
   .content-wrapper {
-    padding: 0 16px;
+    padding: 0 24px;
   }
 
-  .hero-section {
-    padding-bottom: 80px;
+  .landing-footer,
+  .generation-footer {
+    padding: 72px 24px 32px;
   }
 
-  .hero-title {
-    font-size: 28px;
-    width: 100%;
-  }
-
-  .hero-content {
-    width: 100%;
-  }
-
-  .filter-section {
-    padding-top: 8px;
-  }
-
-  .news-list-section {
-    width: 100%;
-    padding-top: 8px;
-  }
-
-  .more-button {
-    padding-top: 8px;
-  }
-
-  .recently-created-section {
-    padding-top: 80px;
-  }
-
-  .recently-created-grid {
-    width: 100%;
-    flex-direction: column;
-  }
-
-  .recent-card {
-    width: 100%;
-  }
-
-  .landing-footer {
-    padding: 72px 16px 16px 16px;
+  .generation-main {
+    padding: 48px 24px 0;
   }
 }

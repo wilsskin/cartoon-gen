@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import axios from 'axios';
 import Header from './components/Header';
 import LandingPage from './pages/LandingPage';
@@ -12,7 +12,6 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD 
 
 function App() {
   const [newsItems, setNewsItems] = useState([]);
-  const [selectedNews, setSelectedNews] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -60,15 +59,14 @@ function App() {
             element={
               <LandingPage
                 newsItems={newsItems}
-                selectedNews={selectedNews}
-                setSelectedNews={setSelectedNews}
                 isLoading={isLoading}
               />
             }
           />
+          <Route path="/generate" element={<Navigate to="/" replace />} />
           <Route
-            path="/generate"
-            element={<GenerationPage selectedNews={selectedNews} />}
+            path="/generate/:headlineId"
+            element={<GenerationPage newsItems={newsItems} isLoading={isLoading} />}
           />
         </Routes>
       </div>

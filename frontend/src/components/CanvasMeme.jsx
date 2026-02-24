@@ -51,10 +51,8 @@ const CanvasMeme = ({ backgroundImageUrl, captionText, isLoading }) => {
         style={{
           border: 'none',
           borderRadius: '8px',
-          width: '512px',
-          height: '512px',
-          maxWidth: '100%',
-          maxHeight: '100%',
+          width: '100%',
+          height: '100%',
           objectFit: 'contain',
           display: isLoading ? 'none' : 'block'
         }}
@@ -63,10 +61,8 @@ const CanvasMeme = ({ backgroundImageUrl, captionText, isLoading }) => {
         <div
           className="generation-loading-container"
           style={{
-            width: '512px',
-            height: '512px',
-            maxWidth: '100%',
-            maxHeight: '100%',
+            width: '100%',
+            height: '100%',
             border: 'none',
             borderRadius: '8px',
             display: 'flex',

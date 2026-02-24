@@ -129,10 +129,9 @@ PROMPT_MAX_LENGTH = 2000
 
 
 class ImageRequest(BaseModel):
-    """Accepts either prompt (direct) or headlineId + style (server builds prompt)."""
+    """Accepts either prompt (direct) or headlineId (server builds prompt)."""
     prompt: Optional[str] = None
     headlineId: Optional[str] = None
-    style: Optional[str] = None
     regenerate: bool = False
     basePrompt: Optional[str] = None  # ignored; backward compat
 
@@ -148,9 +147,6 @@ FEED_DISPLAY_TAGS = {
     "npr_news": "NPR",
     "wsj_us": "WSJ",
 }
-
-# Style allowlist for image generation
-ALLOWED_STYLES = ["Default", "Funnier", "Drier", "More sarcastic", "More wholesome"]
 
 # UUID pattern for validation (standard UUID format)
 UUID_PATTERN = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', re.IGNORECASE)
@@ -386,71 +382,44 @@ def _lookup_headline_by_id(headline_id: str, db: Session) -> dict:
     raise HTTPException(status_code=404, detail=f"Headline with id {headline_id} not found")
 
 
-def _build_prompt_template(headline: str, summary: str, style: str) -> str:
+def _build_prompt_template(headline: str, summary: str) -> str:
     """
     Build a server-side prompt template for image generation.
-    
+
     The prompt is constructed entirely server-side from hard-coded instructions
     plus the headline/summary text. The client never sends prompt text.
-    
+
     Args:
         headline: The headline title
         summary: The headline summary/description
-        style: The style name (must be from ALLOWED_STYLES)
-        
+
     Returns:
         Complete prompt string for image generation
     """
-    base_template = (
-    "TASK: Create a bold political cartoon inspired by the headline below.\n\n"
-    f"HEADLINE: {headline}\n"
-    f"SUMMARY (for context only, do not illustrate literally): {summary}\n\n"
-    "CORE DIRECTION:\n"
-    "- Communicate ONE clear idea or joke using a single strong visual metaphor.\n"
-    "- Reduce complexity: no more than 2–3 main visual elements.\n"
-    "- The cartoon should be immediately readable at a glance.\n\n"
-    "STYLE:\n"
-    "- Classic newspaper political cartoon style with confident ink lines.\n"
-    "- Limited color palette: black, white, gray, plus at most 2 accent colors.\n"
-    "- Hand-drawn, editorial, slightly exaggerated — clever and sharp, not busy.\n\n"
-    "COMPOSITION:\n"
-    "- Square format (1:1 aspect ratio).\n"
-    "- Clear focal point, strong visual hierarchy, plenty of white space.\n"
-    "- Minimal text: use at most three short labels or captions only if absolutely necessary.\n\n"
-    "TONE:\n"
-    "- Bold, satirical, and visually striking.\n"
-    "- Prioritize visual humor and metaphor over explanation.\n\n"
-    "SAFETY:\n"
-    "- Punch up at power, systems, or institutions using symbolism; avoid cruelty, hate, or personal attacks.\n\n"
-    "GOAL:\n"
-    "- Create a simple, memorable political cartoon that lands one strong message through visual satire."
-)
-
-
-    # Style-specific modifiers appended to the base prompt
-    style_modifiers = {
-        "Default": "",  # Base template already defines the default style
-        "Funnier": (
-            "\n\nSTYLE MODIFIER: Push the humor further — use more exaggeration, absurd visual analogies, "
-            "and comedic elements. Think brighter accent colors and a more playful, animated feel."
-        ),
-        "Drier": (
-            "\n\nSTYLE MODIFIER: Use a more understated, dry wit approach — muted tones, subtle irony, "
-            "and deadpan visual humor. Less is more."
-        ),
-        "More sarcastic": (
-            "\n\nSTYLE MODIFIER: Lean into sharp irony and pointed visual metaphors. "
-            "The sarcasm should be biting but still clever — never mean-spirited."
-        ),
-        "More wholesome": (
-            "\n\nSTYLE MODIFIER: Take a lighter, more optimistic angle while keeping the satirical edge. "
-            "Warmer tones, gentler humor, and a more hopeful perspective."
-        ),
-    }
-
-    modifier = style_modifiers.get(style, "")
-
-    return f"{base_template}{modifier}"
+    return (
+        "TASK: Create a bold political cartoon inspired by the headline below.\n\n"
+        f"HEADLINE: {headline}\n"
+        f"SUMMARY (for context only, do not illustrate literally): {summary}\n\n"
+        "CORE DIRECTION:\n"
+        "- Communicate ONE clear idea or joke using a single strong visual metaphor.\n"
+        "- Reduce complexity: no more than 2–3 main visual elements.\n"
+        "- The cartoon should be immediately readable at a glance.\n\n"
+        "STYLE:\n"
+        "- Classic newspaper political cartoon style with confident ink lines.\n"
+        "- Limited color palette: black, white, gray, plus at most 2 accent colors.\n"
+        "- Hand-drawn, editorial, slightly exaggerated — clever and sharp, not busy.\n\n"
+        "COMPOSITION:\n"
+        "- Square format (1:1 aspect ratio).\n"
+        "- Clear focal point, strong visual hierarchy, plenty of white space.\n"
+        "- Minimal text: use at most three short labels or captions only if absolutely necessary.\n\n"
+        "TONE:\n"
+        "- Bold, satirical, and visually striking.\n"
+        "- Prioritize visual humor and metaphor over explanation.\n\n"
+        "SAFETY:\n"
+        "- Punch up at power, systems, or institutions using symbolism; avoid cruelty, hate, or personal attacks.\n\n"
+        "GOAL:\n"
+        "- Create a simple, memorable political cartoon that lands one strong message through visual satire."
+    )
 
 
 # --- Rate Limiting ---
@@ -673,7 +642,7 @@ async def generate_image(request: ImageRequest, raw_request: Request, db: Sessio
 
     Accepts either:
     - prompt: string (non-empty, max 2000 chars) — used directly (wrapped in template)
-    - headlineId + optional style — prompt built server-side from headline
+    - headlineId — prompt built server-side from headline
 
     Rate limited per IP and per-process throttled (1 req/sec).
     Returns { ok, imageBase64?, mimeType?, model?, requestId? } or { ok: false, error: { ... } }.
@@ -717,7 +686,7 @@ async def generate_image(request: ImageRequest, raw_request: Request, db: Sessio
             },
         }
 
-    # Resolve final prompt: either from request.prompt or from headlineId + style
+    # Resolve final prompt: either from request.prompt or from headlineId
     if request.prompt is not None and request.prompt.strip():
         prompt_text = request.prompt.strip()
         if len(prompt_text) > PROMPT_MAX_LENGTH:
@@ -732,7 +701,7 @@ async def generate_image(request: ImageRequest, raw_request: Request, db: Sessio
                     "requestId": None,
                 },
             }
-        final_prompt = _build_prompt_template(headline=prompt_text, summary="", style="Default")
+        final_prompt = _build_prompt_template(headline=prompt_text, summary="")
         log_context = "prompt"
     else:
         if not request.headlineId or not request.headlineId.strip():
@@ -741,19 +710,6 @@ async def generate_image(request: ImageRequest, raw_request: Request, db: Sessio
                 "error": {
                     "code": "MISSING_INPUT",
                     "message": "Provide either 'prompt' or 'headlineId'.",
-                    "status": 400,
-                    "details": None,
-                    "model": services.GEMINI_IMAGE_MODEL,
-                    "requestId": None,
-                },
-            }
-        style = request.style if request.style else "Default"
-        if style not in ALLOWED_STYLES:
-            return {
-                "ok": False,
-                "error": {
-                    "code": "INVALID_STYLE",
-                    "message": f"Invalid style. Allowed: {', '.join(ALLOWED_STYLES)}",
                     "status": 400,
                     "details": None,
                     "model": services.GEMINI_IMAGE_MODEL,
@@ -782,9 +738,8 @@ async def generate_image(request: ImageRequest, raw_request: Request, db: Sessio
         final_prompt = _build_prompt_template(
             headline=headline_data["headline"],
             summary=headline_data["summary"],
-            style=style,
         )
-        log_context = f"headlineId={request.headlineId} style={style}"
+        log_context = f"headlineId={request.headlineId}"
 
     # Per-process throttle (blocking wait)
     _apply_throttle()
