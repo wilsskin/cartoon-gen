@@ -9,9 +9,9 @@ CartoonGen pulls the latest headlines from major news outlets (WSJ, NYT, NBC, Fo
 ## How It Works
 
 1. **Headlines** — A daily cron job fetches the top 3 stories from each RSS feed and stores them in a Neon Postgres database.
-2. **Browse** — The landing page shows today's headlines, categorized by topic (World, Politics, Business, Technology, Culture).
-3. **Generate** — Click any headline to go to the generation page. The app automatically generates a satirical cartoon for that story using Google's Gemini API.
-4. **Download** — Save your cartoon as a PNG.
+2. **Browse** — The landing page shows today's headlines. You can filter by news source (e.g. NYT, NPR, Fox, NBC, WSJ) and use More/Less to show 5 at a time.
+3. **Generate** — Click any headline to go to the generation page. The app generates a satirical cartoon for that story using Google's Gemini API. You can download, copy, or regenerate.
+4. **How it works** — The footer links to an explainer page with the same layout; it includes a link to the GitHub repo.
 
 ## Quick Start
 

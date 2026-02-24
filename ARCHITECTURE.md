@@ -40,7 +40,7 @@ Everything runs in a single Vercel project—no separate backend deployment.
 
 ## How Routing Works
 
-- **Frontend routes** (e.g. `/`, `/generate`) → rewritten to `/index.html` (SPA)
+- **Frontend routes** (`/`, `/generate/:headlineId`, `/how-it-works`) → rewritten to `/index.html` (SPA). The app scrolls to top on every route change.
 - **API routes** (`/api/*`) → handled by FastAPI via Vercel serverless
 - Rewrite `/api/:path*` → `/api` so all API requests hit the FastAPI handler
 
@@ -173,7 +173,7 @@ Image generation (`POST /api/generate-image`) is rate-limited per IP address:
 |--------|------|---------|
 | GET | `/api/health` | Health check—returns `{"ok": true, "hasApiKey": boolean, "model": string}` (never exposes the key) |
 | GET | `/api/news` | Today's headlines (filtered by `fetched_at` in Pacific Time) |
-| POST | `/api/generate-image` | Generate cartoon (body: `prompt` and/or `headlineId` + `style`)—rate limited; returns `{ok, imageBase64?, mimeType?, model?, requestId?}` or `{ok: false, error: {...}}` |
+| POST | `/api/generate-image` | Generate cartoon (body: `prompt` and/or `headlineId`)—rate limited; returns `{ok, imageBase64?, mimeType?, model?, requestId?}` or `{ok: false, error: {...}}` |
 | GET | `/api/cron/pull-feeds` | RSS ingestion (Vercel Cron—requires `CRON_SECRET`) |
 | POST | `/api/cron/pull-feeds` | RSS ingestion (manual trigger—requires `CRON_SECRET`) |
 | GET | `/api/debug/db` | Database connectivity check |
@@ -215,6 +215,9 @@ If `/api/*` returns HTML or 404, routing is misconfigured (check `vercel.json` r
 
 ## Frontend Notes
 
+- **Pages:** Landing (headlines + hero gallery), Generation (per-headline cartoon with download/copy/regenerate), How it works (explainer + GitHub link). All use the same header and 576px content width.
 - **Filter:** Single-select by news source, reorders headlines (selected source first)
 - **Pagination:** Shows 5 headlines at a time, More/Less buttons add/remove 5
+- **Scroll:** `ScrollToTop` component runs on every route change so navigation always lands at the top of the page
+- **Image generation errors:** User sees a single message and one CTA (Try again or Try a different headline) based on error code (rate limit, content blocked, unavailable, etc.). No raw “View error analysis” / technical details.
 - **Animations:** Headlines cascade in on load and filter change (see `DESIGN_SYSTEM.md`)

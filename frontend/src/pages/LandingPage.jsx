@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import filterIcon from '../assets/images/filter-icon.svg';
 import arrowDownIcon from '../assets/images/arrow-down.svg';
 import foxLogo from '../assets/images/fox-us.svg';
@@ -10,6 +10,9 @@ import wsjLogo from '../assets/images/wsj.png';
 import heroCartoon1 from '../assets/images/hero-cartoon-1.png';
 import heroCartoon2 from '../assets/images/hero-cartoon-2.png';
 import heroCartoon3 from '../assets/images/hero-cartoon-3.png';
+import iconX from '../assets/images/icon-x.svg';
+import iconArrowLeft from '../assets/images/icon-arrow-left.svg';
+import iconArrowRight from '../assets/images/icon-arrow-right.svg';
 
 const HERO_IMAGES = [heroCartoon1, heroCartoon2, heroCartoon3];
 
@@ -198,14 +201,16 @@ const LandingPage = ({ newsItems, isLoading }) => {
                       className="hero-gallery-close"
                       onClick={closeGallery}
                       aria-label="Close gallery"
-                    />
+                    >
+                      <img src={iconX} alt="" width="24" height="24" aria-hidden="true" />
+                    </button>
                     <button
                       type="button"
                       className="hero-gallery-prev"
                       onClick={galleryPrev}
                       aria-label="Previous image"
                     >
-                      <span aria-hidden="true">‹</span>
+                      <img src={iconArrowLeft} alt="" width="16" height="16" aria-hidden="true" />
                     </button>
                     <img src={HERO_IMAGES[galleryIndex]} alt="" />
                     <button
@@ -214,7 +219,7 @@ const LandingPage = ({ newsItems, isLoading }) => {
                       onClick={galleryNext}
                       aria-label="Next image"
                     >
-                      <span aria-hidden="true">›</span>
+                      <img src={iconArrowRight} alt="" width="16" height="16" aria-hidden="true" />
                     </button>
                   </div>
                 </div>
@@ -231,7 +236,7 @@ const LandingPage = ({ newsItems, isLoading }) => {
               aria-expanded={isFilterOpen}
               aria-haspopup="listbox"
             >
-              <img src={filterIcon} alt="" className="filter-icon" width="16" height="16" />
+              <img src={filterIcon} alt="" className="filter-icon" width="18" height="18" />
               <span className="filter-text">Filter</span>
             </button>
 
@@ -261,7 +266,7 @@ const LandingPage = ({ newsItems, isLoading }) => {
           {/* News Items List */}
           <div className="news-list-section" key={selectedFeed || 'all'}>
             {isLoading ? (
-              <div className="news-loading">Headlines loading...</div>
+              <div className="news-loading news-loading--shimmer">Headlines loading...</div>
             ) : newsItems.length === 0 ? (
               <div className="news-loading">No headlines available</div>
             ) : (
@@ -306,13 +311,13 @@ const LandingPage = ({ newsItems, isLoading }) => {
               {canShowMore && (
                 <button onClick={handleShowMore} className="more-button">
                   More
-                  <img src={arrowDownIcon} alt="" className="more-arrow" width="10" height="11" />
+                  <img src={arrowDownIcon} alt="" className="more-arrow" width="11" height="13" />
                 </button>
               )}
               {canShowLess && (
                 <button onClick={handleShowLess} className="less-button">
                   Less
-                  <img src={arrowDownIcon} alt="" className="more-arrow" width="10" height="11" />
+                  <img src={arrowDownIcon} alt="" className="more-arrow" width="11" height="13" />
                 </button>
               )}
             </div>
@@ -322,12 +327,10 @@ const LandingPage = ({ newsItems, isLoading }) => {
         {/* Footer */}
         <div className="landing-footer">
           <div className="footer-left">
-            <span className="footer-text">©2026 CartoonGen</span>
-            <span className="footer-text">Built by <a href="https://wilsonskinner.com/" className="footer-link">Wilson Skinner</a> & <a href="#" className="footer-link">Aryn Dagnas</a></span>
+            <span className="footer-text">Built by <a href="https://wilsonskinner.com/" target="_blank" rel="noopener noreferrer" className="footer-link">Wilson Skinner</a></span>
           </div>
           <div className="footer-right">
-            <a href="#" className="footer-text">How it works</a>
-            <a href="https://github.com/wilsskin/cartoon-gen" target="_blank" rel="noopener noreferrer" className="footer-text">Github repo</a>
+            <Link to="/how-it-works" className="footer-text">How it works</Link>
           </div>
         </div>
       </div>

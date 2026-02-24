@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, Link } from 'react-router-dom';
 import axios from 'axios';
 import CanvasMeme from '../components/CanvasMeme';
 import arrowBack from '../assets/images/arrow-back.svg';
@@ -38,17 +38,74 @@ const GenerationPage = ({ newsItems, isLoading }) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState('');
   const [errorDetails, setErrorDetails] = useState(null); // { code, message, status, model, requestId, details }
-  const [showErrorDetails, setShowErrorDetails] = useState(false);
   const [isRateLimited, setIsRateLimited] = useState(false);
   const [tooltip, setTooltip] = useState(null); // 'download' | 'copy' | 'regenerate'
   const [copyConfirmed, setCopyConfirmed] = useState(false);
   const tooltipTimeoutRef = useRef(null);
+  const copyHideTimeoutRef = useRef(null);
+  const copyConfirmedRef = useRef(false);
   const lastHeadlineIdRef = useRef(null);
+
+  /** Maps error state to a single user-facing message and CTA type (no raw details). */
+  const getErrorDisplay = (details, errText, rateLimited) => {
+    if (rateLimited) {
+      return {
+        message: errText || "You've generated too many cartoons. Please wait a few minutes and try again.",
+        title: 'Slow down!',
+        ctaType: 'retry',
+      };
+    }
+    const code = details?.code;
+    const status = details?.status;
+    const msg = (details?.message || errText || '').toLowerCase();
+    if (code === 'CONTENT_BLOCKED') {
+      return {
+        message: "We couldn't create an image for this headline. It may touch on sensitive or private topics.",
+        ctaType: 'different_headline',
+      };
+    }
+    if (code === 'HEADLINE_NOT_FOUND') {
+      return {
+        message: 'This headline is no longer available.',
+        ctaType: 'different_headline',
+      };
+    }
+    if (code === 'RATE_LIMIT') {
+      return {
+        message: errText || "You've generated too many cartoons. Please wait a few minutes and try again.",
+        title: 'Slow down!',
+        ctaType: 'retry',
+      };
+    }
+    if (status === 503 || (msg && (msg.includes('unavailable') || msg.includes('503')))) {
+      return {
+        message: 'Service temporarily unavailable. Please try again in a moment.',
+        ctaType: 'retry',
+      };
+    }
+    if (code === 'UNEXPECTED_RESPONSE_SHAPE' || code === 'NO_IMAGE_DATA') {
+      return {
+        message: 'Image generation failed. Something went wrong on our side.',
+        ctaType: 'retry',
+      };
+    }
+    return {
+      message: errText || 'Image generation failed. Please try again.',
+      ctaType: 'retry',
+    };
+  };
 
   const clearTooltipTimeout = () => {
     if (tooltipTimeoutRef.current) {
       clearTimeout(tooltipTimeoutRef.current);
       tooltipTimeoutRef.current = null;
+    }
+  };
+
+  const clearCopyHideTimeout = () => {
+    if (copyHideTimeoutRef.current) {
+      clearTimeout(copyHideTimeoutRef.current);
+      copyHideTimeoutRef.current = null;
     }
   };
 
@@ -65,13 +122,17 @@ const GenerationPage = ({ newsItems, isLoading }) => {
   const handleCopyImage = () => {
     if (!currentImageUrl || isGenerating || error) return;
     if (copyConfirmed) {
+      clearCopyHideTimeout();
       setTooltip(null);
       setCopyConfirmed(false);
+      copyConfirmedRef.current = false;
     }
     fetch(currentImageUrl)
       .then((res) => res.blob())
       .then((blob) => navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]))
       .then(() => {
+        clearCopyHideTimeout();
+        copyConfirmedRef.current = true;
         setCopyConfirmed(true);
         setTooltip('copy');
       })
@@ -79,8 +140,19 @@ const GenerationPage = ({ newsItems, isLoading }) => {
   };
 
   const hideTooltipAndCopyState = () => {
-    hideTooltip();
-    setCopyConfirmed(false);
+    if (copyConfirmedRef.current) {
+      clearCopyHideTimeout();
+      copyHideTimeoutRef.current = setTimeout(() => {
+        setTooltip(null);
+        setCopyConfirmed(false);
+        copyConfirmedRef.current = false;
+        copyHideTimeoutRef.current = null;
+      }, 1500);
+    } else {
+      hideTooltip();
+      setCopyConfirmed(false);
+      copyConfirmedRef.current = false;
+    }
   };
 
   useEffect(() => {
@@ -107,7 +179,10 @@ const GenerationPage = ({ newsItems, isLoading }) => {
     }
   }, [headlineId, isLoading, selectedNews, navigate]);
 
-  useEffect(() => () => clearTooltipTimeout(), []);
+  useEffect(() => () => {
+    clearTooltipTimeout();
+    clearCopyHideTimeout();
+  }, []);
 
   const handleGenerateImage = () => {
     if (!selectedNews) return;
@@ -116,7 +191,6 @@ const GenerationPage = ({ newsItems, isLoading }) => {
     setIsGenerating(true);
     setError('');
     setErrorDetails(null);
-    setShowErrorDetails(false);
     setIsRateLimited(false);
 
     axios.post(`${API_BASE_URL}/api/generate-image`, {
@@ -240,41 +314,46 @@ const GenerationPage = ({ newsItems, isLoading }) => {
           {/* Image Card */}
           <div className="generation-card">
             {error ? (
-              <div className={`generation-error ${isRateLimited ? 'generation-error-rate-limit' : ''}`}>
-                {isRateLimited ? (
-                  <>
-                    <span className="generation-error-title">Slow down!</span>
-                    <span className="generation-error-text">{error}</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="generation-error-text">{error}</span>
-                    {errorDetails && (
-                      <div className="generation-error-details">
+              (() => {
+                const display = getErrorDisplay(errorDetails, error, isRateLimited);
+                return (
+                  <div className={`generation-error ${isRateLimited ? 'generation-error-rate-limit' : ''}`}>
+                    {display.title && (
+                      <span className="generation-error-title">{display.title}</span>
+                    )}
+                    <span className="generation-error-text">{display.message}</span>
+                    <div className="generation-error-cta-wrap">
+                      {display.ctaType === 'retry' ? (
                         <button
                           type="button"
-                          className="generation-error-details-toggle"
-                          onClick={() => setShowErrorDetails((v) => !v)}
-                          aria-expanded={showErrorDetails}
+                          className="generation-error-cta"
+                          onClick={() => {
+                            setError('');
+                            setErrorDetails(null);
+                            setIsRateLimited(false);
+                            handleGenerateImage();
+                          }}
                         >
-                          {showErrorDetails ? 'Hide' : 'Show'} details
+                          Try again
                         </button>
-                        {showErrorDetails && (
-                          <pre className="generation-error-details-content">
-                            {[
-                              errorDetails.status != null && `Status: ${errorDetails.status}`,
-                              errorDetails.code != null && errorDetails.code !== undefined && `Code: ${String(errorDetails.code)}`,
-                              errorDetails.model != null && errorDetails.model !== undefined && `Model: ${String(errorDetails.model)}`,
-                              errorDetails.requestId != null && errorDetails.requestId !== undefined && `Request ID: ${String(errorDetails.requestId)}`,
-                              errorDetails.details != null && `Details: ${JSON.stringify(errorDetails.details, null, 2)}`,
-                            ].filter(Boolean).join('\n')}
-                          </pre>
-                        )}
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
+                      ) : (
+                        <button
+                          type="button"
+                          className="generation-error-cta"
+                          onClick={() => {
+                            setError('');
+                            setErrorDetails(null);
+                            setIsRateLimited(false);
+                            navigate('/');
+                          }}
+                        >
+                          Try a different headline
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()
             ) : (
               <CanvasMeme
                 backgroundImageUrl={currentImageUrl}
@@ -321,7 +400,7 @@ const GenerationPage = ({ newsItems, isLoading }) => {
                   onMouseLeave={hideTooltip}
                 >
                   <svg className="action-icon-svg" viewBox="0 0 32 32" width="40" height="40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                    <rect className="action-icon-border" x="0.5" y="0.5" width="31" height="31" rx="7.5" stroke="#595959" strokeOpacity="0.15"/>
+                    <rect className="action-icon-border" x="0.5" y="0.5" width="31" height="31" rx="7.5" stroke="#767676" strokeOpacity="0.15"/>
                     <g clipPath="url(#clip-dl)">
                       <path d="M16 17.125V9.25" stroke="black" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
                       <path d="M22.1875 17.125V21.625H9.8125V17.125" stroke="black" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
@@ -340,7 +419,7 @@ const GenerationPage = ({ newsItems, isLoading }) => {
                   onMouseLeave={hideTooltipAndCopyState}
                 >
                   <svg className="action-icon-svg" viewBox="0 0 32 32" width="40" height="40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                    <rect className="action-icon-border" x="0.5" y="0.5" width="31" height="31" rx="7.5" stroke="#595959" strokeOpacity="0.15"/>
+                    <rect className="action-icon-border" x="0.5" y="0.5" width="31" height="31" rx="7.5" stroke="#767676" strokeOpacity="0.15"/>
                     <g clipPath="url(#clip-cp)" transform="translate(-40, 0)">
                       <path d="M58.8125 18.8125H62.1875V9.8125H53.1875V13.1875" stroke="black" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
                       <path d="M58.8125 13.1875H49.8125V22.1875H58.8125V13.1875Z" stroke="black" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
@@ -372,7 +451,7 @@ const GenerationPage = ({ newsItems, isLoading }) => {
                   onMouseLeave={hideTooltip}
                 >
                   <svg className="action-icon-svg" viewBox="0 0 32 32" width="40" height="40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                    <rect className="action-icon-border" x="0.5" y="0.5" width="31" height="31" rx="7.5" stroke="#595959" strokeOpacity="0.15"/>
+                    <rect className="action-icon-border" x="0.5" y="0.5" width="31" height="31" rx="7.5" stroke="#767676" strokeOpacity="0.15"/>
                     <g clipPath="url(#clip-reg)" transform="translate(-80, 0)">
                       <path d="M98.8125 13.75H102.188V10.375" stroke="black" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
                       <path d="M102.188 13.7499L100.199 11.7614C99.0475 10.6099 97.4884 9.9588 95.8599 9.94932C94.2314 9.93985 92.6649 10.5728 91.5 11.7108" stroke="black" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
@@ -388,7 +467,7 @@ const GenerationPage = ({ newsItems, isLoading }) => {
               <>
                 <span className="generation-action generation-action-download generation-action-disabled" aria-hidden="true">
                   <svg className="action-icon-svg" viewBox="0 0 32 32" width="40" height="40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                    <rect className="action-icon-border" x="0.5" y="0.5" width="31" height="31" rx="7.5" stroke="#595959" strokeOpacity="0.15"/>
+                    <rect className="action-icon-border" x="0.5" y="0.5" width="31" height="31" rx="7.5" stroke="#767676" strokeOpacity="0.15"/>
                     <g clipPath="url(#clip-dl-disabled)">
                       <path d="M16 17.125V9.25" stroke="black" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
                       <path d="M22.1875 17.125V21.625H9.8125V17.125" stroke="black" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
@@ -399,7 +478,7 @@ const GenerationPage = ({ newsItems, isLoading }) => {
                 </span>
                 <span className="generation-action generation-action-copy generation-action-disabled" aria-hidden="true">
                   <svg className="action-icon-svg" viewBox="0 0 32 32" width="40" height="40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                    <rect className="action-icon-border" x="0.5" y="0.5" width="31" height="31" rx="7.5" stroke="#595959" strokeOpacity="0.15"/>
+                    <rect className="action-icon-border" x="0.5" y="0.5" width="31" height="31" rx="7.5" stroke="#767676" strokeOpacity="0.15"/>
                     <g clipPath="url(#clip-cp-disabled)" transform="translate(-40, 0)">
                       <path d="M58.8125 18.8125H62.1875V9.8125H53.1875V13.1875" stroke="black" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
                       <path d="M58.8125 13.1875H49.8125V22.1875H58.8125V13.1875Z" stroke="black" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
@@ -409,7 +488,7 @@ const GenerationPage = ({ newsItems, isLoading }) => {
                 </span>
                 <span className="generation-action generation-action-regenerate generation-action-disabled" aria-hidden="true">
                   <svg className="action-icon-svg" viewBox="0 0 32 32" width="40" height="40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                    <rect className="action-icon-border" x="0.5" y="0.5" width="31" height="31" rx="7.5" stroke="#595959" strokeOpacity="0.15"/>
+                    <rect className="action-icon-border" x="0.5" y="0.5" width="31" height="31" rx="7.5" stroke="#767676" strokeOpacity="0.15"/>
                     <g clipPath="url(#clip-reg-disabled)" transform="translate(-80, 0)">
                       <path d="M98.8125 13.75H102.188V10.375" stroke="black" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
                       <path d="M102.188 13.7499L100.199 11.7614C99.0475 10.6099 97.4884 9.9588 95.8599 9.94932C94.2314 9.93985 92.6649 10.5728 91.5 11.7108" stroke="black" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
@@ -428,12 +507,10 @@ const GenerationPage = ({ newsItems, isLoading }) => {
       {/* Footer */}
       <div className="generation-footer">
         <div className="footer-left">
-          <span className="footer-text">©2026 CartoonGen</span>
-          <span className="footer-text">Built by <a href="https://wilsonskinner.com/" className="footer-link">Wilson Skinner</a> & <a href="#" className="footer-link">Aryn Dagnas</a></span>
+          <span className="footer-text">Built by <a href="https://wilsonskinner.com/" target="_blank" rel="noopener noreferrer" className="footer-link">Wilson Skinner</a></span>
         </div>
         <div className="footer-right">
-          <a href="#" className="footer-text">How it works</a>
-          <a href="https://github.com/wilsskin/cartoon-gen" target="_blank" rel="noopener noreferrer" className="footer-text">Github repo</a>
+          <Link to="/how-it-works" className="footer-text">How it works</Link>
         </div>
       </div>
     </div>

@@ -31,7 +31,7 @@ const CanvasMeme = ({ backgroundImageUrl, captionText, isLoading }) => {
       canvas.width = 512;
       canvas.height = 512;
       context.clearRect(0, 0, canvas.width, canvas.height);
-      context.fillStyle = '#FEF4DF';
+      context.fillStyle = '#f5f5f5';
       context.fillRect(0, 0, canvas.width, canvas.height);
       context.fillStyle = '#1a1a1a';
       context.font = '16px "Crimson Text", Georgia, serif';

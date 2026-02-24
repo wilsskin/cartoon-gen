@@ -55,7 +55,7 @@ body {
 .header-icon {
   display: flex;
   align-items: center;
-  gap: 9.14px;
+  gap: 8px;
 }
 
 .header-icon img {
@@ -64,10 +64,9 @@ body {
 
 .header-date {
   font-family: 'Crimson Text', Georgia, serif;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 400;
   line-height: 1.33;
-  letter-spacing: -0.01em;
   color: #767676;
   text-align: center;
 }
@@ -88,6 +87,97 @@ body {
   gap: 48px;
 }
 
+/* How it works page – same container and content wrapper as landing */
+.how-it-works-page {
+  flex: 1;
+  width: 100%;
+  background-color: #FFFFFF;
+}
+
+.how-it-works-container {
+  max-width: 576px;
+  margin: 0 auto;
+  padding: 48px 0 0 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Half the gap between back button and title on How it works */
+.how-it-works-page .generation-back {
+  padding-bottom: 4px;
+}
+
+/* Title + subtext block: same spacing as hero (no gap between title and subtext) */
+.how-it-works-hero {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 100%;
+}
+
+.how-it-works-title {
+  font-family: 'Crimson Pro', serif;
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.04em;
+  color: #000000;
+  width: 100%;
+  max-width: 100%;
+  margin: 0 0 0 0;
+  padding-top: 0;
+}
+
+.how-it-works-subtext {
+  font-family: 'Crimson Text', Georgia, serif;
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 1.33;
+  color: #767676;
+  max-width: 100%;
+  margin: 0 0 40px 0;
+}
+
+.how-it-works-content {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.how-it-works-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.how-it-works-h2 {
+  font-family: 'Crimson Text', Georgia, serif;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: #000000;
+  margin: 0;
+}
+
+.how-it-works-p {
+  font-family: 'Crimson Text', Georgia, serif;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: #000000;
+  margin: 0;
+}
+
+.how-it-works-footer {
+  padding: 72px 0 32px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 48px;
+  width: 100%;
+  margin-top: 24px;
+}
+
 /* Content Wrapper - matches Frame 30 from Figma */
 .content-wrapper {
   display: flex;
@@ -106,7 +196,7 @@ body {
   font-family: 'Crimson Pro', serif;
   font-size: 36px;
   font-weight: 700;
-  line-height: 1.33;
+  line-height: 1.2;
   letter-spacing: -0.04em;
   color: #000000;
   width: 100%;
@@ -171,7 +261,8 @@ body {
   overflow: hidden;
   box-sizing: border-box;
   cursor: pointer;
-  transition: transform 0.2s ease, z-index 0s;
+  /* Transform animates first (lift 4px); z-index updates after so card doesn’t pop to top instantly */
+  transition: transform 150ms cubic-bezier(0.25, 0.1, 0.25, 1), z-index 0s 150ms;
 }
 
 .hero-image-card:hover {
@@ -230,7 +321,7 @@ body {
 .hero-gallery-backdrop {
   position: fixed;
   inset: 0;
-  background-color: rgba(0, 0, 0, 0.4);
+  background-color: rgba(0, 0, 0, 0.2);
   z-index: 1000;
   display: flex;
   align-items: center;
@@ -241,66 +332,35 @@ body {
 
 .hero-gallery-content {
   position: relative;
-  width: 480px;
-  height: 480px;
-  max-width: 100%;
-  max-height: calc(100vh - 48px);
+  width: min(480px, 100%, calc(100vh - 48px));
+  aspect-ratio: 1 / 1;
+  height: auto;
   flex-shrink: 0;
 }
 
-.hero-gallery-content img {
+.hero-gallery-content > img {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
   width: 100%;
   height: 100%;
   object-fit: contain;
   display: block;
-  background: #FFFFFF;
+  background: #ffffff;
   border-radius: 8px;
 }
 
-.hero-gallery-close {
-  position: absolute;
-  top: -44px;
-  right: 0;
-  width: 36px;
-  height: 36px;
-  border: 1px solid rgba(118, 118, 118, 0.15);
-  background: #FFFFFF;
-  color: #000000;
-  font-size: 28px;
-  line-height: 1;
-  cursor: pointer;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-  transition: background-color 150ms cubic-bezier(0.25, 0.1, 0.25, 1);
-}
-
-.hero-gallery-close:hover {
-  background-color: #f5f5f5;
-}
-
-.hero-gallery-close::after {
-  content: '×';
-  line-height: 1;
-  display: block;
-}
-
+/* Gallery controls: 44px circular buttons, 16px icon, same style for close and arrows */
+.hero-gallery-close,
 .hero-gallery-prev,
 .hero-gallery-next {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
   width: 44px;
   height: 44px;
-  border: 1px solid rgba(118, 118, 118, 0.15);
-  background: #FFFFFF;
-  color: #000000;
-  font-size: 24px;
-  line-height: 1;
-  cursor: pointer;
   padding: 0;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  background: rgba(255, 255, 255, 0.66);
+  color: #000000;
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -308,22 +368,55 @@ body {
   transition: background-color 150ms cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 
-.hero-gallery-prev:hover,
-.hero-gallery-next:hover {
-  background-color: #f5f5f5;
+.hero-gallery-close {
+  position: absolute;
+  top: -32px;
+  right: 8px;
+  width: 20px;
+  height: 20px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
 }
 
-/* Center arrow glyphs optically inside the circle */
-.hero-gallery-prev span,
-.hero-gallery-next span {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-  line-height: 1;
-  margin: 0;
-  padding: 0;
+.hero-gallery-close:hover {
+  background-color: transparent;
+}
+
+.hero-gallery-close img {
+  display: block;
+  width: 24px;
+  height: 24px;
+  max-width: 24px;
+  max-height: 24px;
+  pointer-events: none;
+  background: transparent;
+}
+
+.hero-gallery-prev:hover,
+.hero-gallery-next:hover {
+  background-color: rgba(255, 255, 255, 1);
+}
+
+.hero-gallery-prev img,
+.hero-gallery-next img {
+  display: block;
+  width: 16px;
+  height: 16px;
+  max-width: 16px;
+  max-height: 16px;
+  pointer-events: none;
+  background: transparent;
+}
+
+.hero-gallery-prev,
+.hero-gallery-next {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1;
+  border: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
 }
 
 .hero-gallery-prev {
@@ -335,15 +428,23 @@ body {
 }
 
 @media (max-width: 600px) {
+  .hero-gallery-close img {
+    filter: brightness(0);
+  }
   .hero-gallery-prev {
     left: 8px;
   }
   .hero-gallery-next {
     right: 8px;
   }
-  .hero-gallery-content {
-    width: min(480px, 100%);
-    height: min(480px, calc(100vh - 48px));
+  .hero-gallery-prev,
+  .hero-gallery-next {
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(0, 0, 0, 0.12);
+  }
+  .hero-gallery-prev:hover,
+  .hero-gallery-next:hover {
+    background: rgba(255, 255, 255, 1);
   }
 }
 
@@ -378,10 +479,9 @@ body {
 
 .filter-text {
   font-family: 'Crimson Text', Georgia, serif;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 400;
   line-height: 1.33;
-  letter-spacing: -0.01em;
   color: #767676;
   text-align: center;
   transition: filter 0.15s ease;
@@ -424,7 +524,7 @@ body {
   border: none;
   cursor: pointer;
   text-align: left;
-  transition: background-color 0.1s ease;
+  transition: background-color 150ms cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 
 .filter-option:hover {
@@ -432,18 +532,17 @@ body {
 }
 
 .filter-option-logo {
-  width: 16px;
-  height: 12px;
+  width: 18px;
+  height: 14px;
   object-fit: contain;
   opacity: 0.7;
 }
 
 .filter-option-label {
   font-family: 'Crimson Text', Georgia, serif;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 400;
   line-height: 1.33;
-  letter-spacing: -0.01em;
   color: #000000;
 }
 
@@ -457,10 +556,34 @@ body {
 
 .news-loading {
   font-family: 'Crimson Text', Georgia, serif;
-  font-size: 14px;
-  letter-spacing: -0.01em;
+  font-size: 16px;
   color: #767676;
   padding: 8px 0;
+}
+
+.news-loading--shimmer {
+  background: linear-gradient(
+    90deg,
+    #767676 0%,
+    #9a9a9a 20%,
+    #c0c0c0 50%,
+    #9a9a9a 80%,
+    #767676 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: newsLoadingShimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes newsLoadingShimmer {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
 }
 
 .news-item {
@@ -519,6 +642,7 @@ body {
 .news-item-meta {
   display: inline-flex;
   align-items: center;
+  align-self: flex-start;
   gap: 4px;
   text-decoration: none;
   color: inherit;
@@ -531,8 +655,8 @@ body {
 
 .news-item-logo {
   display: block;
-  max-width: 18px;
-  max-height: 14px;
+  max-width: 21px;
+  max-height: 16px;
   object-fit: contain;
   transition: opacity 0.15s cubic-bezier(0.25, 0.1, 0.25, 1);
   will-change: opacity;
@@ -541,10 +665,9 @@ body {
 
 .news-item-category {
   font-family: 'Crimson Text', Georgia, serif;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 400;
   line-height: 1.33;
-  letter-spacing: -0.01em;
   color: #767676;
   transition: color 0.25s cubic-bezier(0.25, 0.1, 0.25, 1);
   will-change: color;
@@ -560,7 +683,7 @@ body {
 .more-less-buttons {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 24px;
   padding: 8px 0 0 0;
 }
 
@@ -574,10 +697,9 @@ body {
   border: none;
   cursor: pointer;
   font-family: 'Crimson Text', Georgia, serif;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 400;
   line-height: 1.3;
-  letter-spacing: -0.01em;
   color: #767676;
   text-align: center;
   transition: color 0.15s ease;
@@ -600,75 +722,6 @@ body {
 
 .less-button .more-arrow {
   transform: rotate(180deg);
-}
-
-/* Recently Created Section */
-.recently-created-section {
-  display: flex;
-  flex-direction: column;
-  padding-top: 80px;
-}
-
-.recently-created-title-wrapper {
-  display: flex;
-  justify-content: flex-start;
-  align-items: flex-start;
-}
-
-.recently-created-title {
-  font-family: 'Crimson Pro', serif;
-  font-size: 20px;
-  font-weight: 400;
-  line-height: 1.11;
-  letter-spacing: -0.02em;
-  color: #000000;
-  margin-bottom: 8px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: flex-start;
-  gap: 10px;
-}
-
-.recently-created-grid {
-  display: flex;
-  flex-direction: row;
-  justify-content: stretch;
-  align-items: stretch;
-  gap: 32px;
-  padding-top: 8px;
-  width: 600px;
-  flex-wrap: wrap;
-}
-
-.recently-created-grid > :nth-child(3),
-.recently-created-grid > :nth-child(4) {
-  padding-top: 32px;
-}
-
-.recent-card {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 8px;
-  width: calc((600px - 32px) / 2);
-}
-
-.recent-card-image {
-  width: 100%;
-  height: 284px;
-  border-radius: 4px;
-  border: 1px solid #595959;
-  background: linear-gradient(rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.05)), #FFFFFF;
-}
-
-.recent-card-text {
-  font-family: 'Crimson Text', Georgia, serif;
-  font-size: 14px;
-  font-weight: 400;
-  line-height: 1.33;
-  letter-spacing: -0.01em;
-  color: #767676;
 }
 
 /* Footer */
@@ -696,10 +749,9 @@ body {
 
 .footer-text {
   font-family: 'Crimson Text', Georgia, serif;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 400;
   line-height: 1.33;
-  letter-spacing: -0.01em;
   color: #767676;
   text-decoration: none;
   display: block;
@@ -766,8 +818,8 @@ a.footer-text:hover {
 }
 
 .back-text {
-  font-family: 'Roboto', sans-serif;
-  font-size: 12px;
+  font-family: 'Crimson Text', Georgia, serif;
+  font-size: 16px;
   font-weight: 400;
   line-height: 1.3;
   color: #767676;
@@ -885,55 +937,57 @@ a.footer-text:hover {
   }
 }
 
-/* Error state inside card */
+/* Error state inside card – one message + one CTA, centered */
 .generation-error {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 12px;
   width: 100%;
-  min-height: 120px;
-  padding: 24px;
+  min-height: 160px;
+  padding: 32px 24px;
   background-color: #f5f5f5;
-  border-radius: 7px;
+  border-radius: 8px;
+  text-align: center;
 }
 
 .generation-error-text {
   font-family: 'Crimson Text', Georgia, serif;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 400;
-  letter-spacing: -0.01em;
   color: #767676;
-  text-align: center;
+  line-height: 1.4;
+  max-width: 320px;
 }
 
-.generation-error-details {
-  margin-top: 8px;
-  width: 100%;
-  max-width: 100%;
+.generation-error-cta-wrap {
+  margin-top: 4px;
 }
 
-.generation-error-details-toggle {
+.generation-error-cta {
   font-family: 'Crimson Text', Georgia, serif;
-  font-size: 13px;
-  color: #767676;
-  background: none;
-  border: none;
+  font-size: 16px;
+  font-weight: 600;
+  color: #000000;
+  background-color: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  padding: 10px 20px;
   cursor: pointer;
-  text-decoration: underline;
-  padding: 0;
+  transition: background-color 150ms cubic-bezier(0.25, 0.1, 0.25, 1),
+              border-color 150ms cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 
-.generation-error-details-toggle:hover {
-  color: #000;
+.generation-error-cta:hover {
+  background-color: #f0f0f0;
+  border-color: rgba(0, 0, 0, 0.25);
 }
 
 /* Headline no longer available (e.g. stale or shared link) */
 .generation-unavailable {
   font-family: 'Crimson Text', Georgia, serif;
-  font-size: 14px;
-  letter-spacing: -0.01em;
+  font-size: 16px;
   color: #767676;
   padding: 16px 0;
 }
@@ -952,27 +1006,13 @@ a.footer-text:hover {
   opacity: 0.8;
 }
 
-.generation-error-details-content {
-  margin-top: 8px;
-  padding: 12px;
-  font-size: 12px;
-  font-family: ui-monospace, monospace;
-  background: #fff;
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
-  overflow: auto;
-  white-space: pre-wrap;
-  word-break: break-word;
-  color: #333;
-}
-
 /* Rate limit error state */
 .generation-error-rate-limit {
   flex-direction: column;
   gap: 8px;
   padding: 32px;
   text-align: center;
-  background-color: #FEF4DF;
+  background-color: #f5f5f5;
 }
 
 .generation-error-title {
@@ -1031,11 +1071,10 @@ a.footer-text:hover {
 
 .generation-subtext {
   font-family: 'Crimson Text', Georgia, serif;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 400;
   line-height: 1.33;
-  letter-spacing: -0.01em;
-  color: #595959;
+  color: #767676;
 }
 
 /* Action Icons - download, copy, regenerate. Each button 40×40, gap 16px, left-aligned. */
@@ -1157,63 +1196,21 @@ a.footer-text:hover {
   margin-top: auto;
 }
 
-/* Legacy styles kept for compatibility */
-.loading-message {
-  color: #1a1a1a;
-  font-style: italic;
-  text-align: center;
-  font-size: 14px;
-  letter-spacing: -0.01em;
-  font-family: 'Crimson Text', Georgia, serif;
-}
-
-.error-message {
-  color: #d32f2f;
-  text-align: center;
-  padding: 8px 16px;
-  background-color: rgba(211, 47, 47, 0.1);
-  border-radius: 4px;
-  font-weight: 400;
-  font-family: 'Crimson Text', Georgia, serif;
-  font-size: 14px;
-  letter-spacing: -0.01em;
-}
-
 .global-error {
-  background-color: #FCE9BE;
+  background-color: #f5f5f5;
   color: #d32f2f;
   padding: 16px;
   text-align: center;
   border-bottom: 2px solid #d32f2f;
   font-weight: 600;
   font-family: 'Crimson Text', Georgia, serif;
+  font-size: 16px;
 }
 
 /* Canvas Styles */
 canvas {
   border-radius: 8px;
   border: none;
-}
-
-.download-btn {
-  margin-top: 16px;
-  flex-shrink: 0;
-  background-color: #232ED1;
-  border: 2px solid #232ED1;
-  color: #fff;
-  padding: 16px 40px;
-  border-radius: 8px;
-  font-size: 20px;
-  font-weight: 600;
-  font-family: 'Crimson Text', Georgia, serif;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  text-align: center;
-}
-
-.download-btn:hover {
-  background-color: #1a23a8;
-  transform: translateY(-2px);
 }
 
 /* Responsive: at 576px and below, reduce side padding to 24px. Content fills container. */
@@ -1233,5 +1230,25 @@ canvas {
 
   .generation-main {
     padding: 48px 24px 0;
+  }
+
+  /* Generation action buttons: 48×48 touch targets, 16px gap on mobile */
+  .generation-actions {
+    gap: 12px;
+  }
+
+  .generation-actions .generation-action {
+    width: 48px;
+    height: 48px;
+  }
+
+  .generation-actions .generation-action::before {
+    width: 46px;
+    height: 46px;
+  }
+
+  .generation-actions .action-icon-svg {
+    width: 48px;
+    height: 48px;
   }
 }

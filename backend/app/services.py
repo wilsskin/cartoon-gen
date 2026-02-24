@@ -165,16 +165,42 @@ def generate_satire_image(prompt: str) -> dict[str, Any]:
     err = last_exception or RuntimeError("Unknown error")
     status = _extract_status(err)
     message = str(err)
+    code = str(getattr(err, "code", None) or type(err).__name__)
+
     if not message or "GEMINI_API_KEY" in message or "api_key" in message.lower():
         message = "Image generation failed."
     if "429" in message or status == 429:
         message = "Rate limit exceeded. Please try again in a moment."
     if "503" in message or status == 503:
         message = "Service temporarily unavailable. Please try again."
+
+    # Detect safety/content blocks from Gemini (Option B: stable code + safe message)
+    _msg_lower = message.lower()
+    if any(
+        kw in _msg_lower
+        for kw in (
+            "safety",
+            "blocked",
+            "content policy",
+            "content policy violation",
+            "sensitive",
+            "harmful",
+            "inappropriate",
+            "not allowed",
+            "cannot generate",
+            "refused",
+        )
+    ):
+        code = "CONTENT_BLOCKED"
+        message = (
+            "We couldn't create an image for this headline. "
+            "It may touch on sensitive or private topics."
+        )
+
     return {
         "ok": False,
         "error": {
-            "code": str(getattr(err, "code", None) or type(err).__name__),
+            "code": code,
             "message": message,
             "status": status,
             "details": None,

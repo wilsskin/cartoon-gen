@@ -1,14 +1,23 @@
 import { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import Header from './components/Header';
 import LandingPage from './pages/LandingPage';
 import GenerationPage from './pages/GenerationPage';
+import HowItWorksPage from './pages/HowItWorksPage';
 
 // API base URL: relative in production, localhost in dev
 // In production (Vercel), frontend calls relative /api/* routes on the same domain
 // In local dev, frontend uses http://localhost:8000
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? '' : 'http://localhost:8000');
+
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+  return null;
+}
 
 function App() {
   const [newsItems, setNewsItems] = useState([]);
@@ -48,6 +57,7 @@ function App() {
 
   return (
     <Router>
+      <ScrollToTop />
       <div className="app">
         <Header />
 
@@ -68,6 +78,7 @@ function App() {
             path="/generate/:headlineId"
             element={<GenerationPage newsItems={newsItems} isLoading={isLoading} />}
           />
+          <Route path="/how-it-works" element={<HowItWorksPage />} />
         </Routes>
       </div>
     </Router>
