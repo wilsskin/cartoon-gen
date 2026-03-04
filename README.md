@@ -40,10 +40,7 @@ React, Vite, FastAPI, Neon Postgres, Gemini API, and Vercel.
 
 For deployment details, Vercel setup, and integration specifics, see **[ARCHITECTURE.md](./ARCHITECTURE.md)**.
 
-## Author
-
-Built by [Wilson Skinner](https://wilsonskinner.com/).
 
 ## Acknowledgments
 
-Special thanks to Aryan Dagnas for the hackathon partnership that sparked the idea for CartoonGen.
+Built by [Wilson Skinner](https://wilsonskinner.com/). Initial prototype created alongside [Aryan Dagnas](https://github.com/aryandaga7) during an sf hackathon in fall 2025.  

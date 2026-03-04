@@ -354,7 +354,7 @@ const GenerationPage = ({ newsItems, isLoading }) => {
         {/* Card Container */}
         <div className="generation-card-container">
           {/* Image Card */}
-          <div className="generation-card">
+          <div className={`generation-card${isGenerating ? ' generation-card--loading' : ''}`}>
             {error ? (
               (() => {
                 const display = getErrorDisplay(errorDetails, error, isRateLimited);

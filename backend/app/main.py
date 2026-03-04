@@ -157,60 +157,52 @@ def _is_valid_uuid(uuid_string: str) -> bool:
     return bool(UUID_PATTERN.match(uuid_string))
 
 
-def _get_today_date_range() -> Tuple[datetime, datetime]:
+def _get_latest_fetch_date_range(db: Session) -> Optional[Tuple[datetime, datetime]]:
     """
-    Get today's date range for filtering in Pacific Time, converted to UTC for database queries.
-    
-    Computes "today" in America/Los_Angeles (Pacific Time) at 00:00:00,
-    then converts to UTC for database comparison.
-    
-    Returns:
-        Tuple of (today_start_utc, tomorrow_start_utc) as timezone-aware datetime objects in UTC.
-        These can be passed directly to SQL queries for TIMESTAMPTZ comparisons.
+    Get the date range (in UTC) for the most recent Pacific Time date that has at least one item.
+
+    Used so we show the latest batch of headlines (e.g. yesterday before cron runs, today after).
+    Returns None if there are no items in the database.
     """
-    # Get Pacific Time timezone
+    result = db.execute(
+        text("""
+            SELECT (MAX(i.fetched_at) AT TIME ZONE :tz)::date AS display_date
+            FROM items i
+            WHERE i.feed_id != 'cnn_top'
+        """),
+        {"tz": APP_TIMEZONE},
+    )
+    row = result.fetchone()
+    if not row or row[0] is None:
+        return None
+    display_date = row[0]
     pt_tz = ZoneInfo(APP_TIMEZONE)
-    
-    # Get today's date in Pacific Time
-    now_pt = datetime.now(pt_tz)
-    today_pt = now_pt.date()
-    
-    # Create today_start at 00:00:00 in Pacific Time
-    today_start_pt = datetime.combine(today_pt, datetime.min.time(), tzinfo=pt_tz)
-    
-    # Create tomorrow_start at 00:00:00 in Pacific Time
-    tomorrow_start_pt = today_start_pt + timedelta(days=1)
-    
-    # Convert to UTC for database queries (TIMESTAMPTZ comparisons)
-    today_start_utc = today_start_pt.astimezone(timezone.utc)
-    tomorrow_start_utc = tomorrow_start_pt.astimezone(timezone.utc)
-    
-    # Debug logging (only if flag is enabled)
+    day_start_pt = datetime.combine(display_date, datetime.min.time(), tzinfo=pt_tz)
+    day_end_pt = day_start_pt + timedelta(days=1)
+    day_start_utc = day_start_pt.astimezone(timezone.utc)
+    day_end_utc = day_end_pt.astimezone(timezone.utc)
     if DEBUG_TIME_WINDOWS:
         print(
-            f"TODAY WINDOW PT: {today_start_pt.isoformat()} -> {tomorrow_start_pt.isoformat()}, "
-            f"UTC: {today_start_utc.isoformat()} -> {tomorrow_start_utc.isoformat()}"
+            f"LATEST FETCH DATE PT: {display_date} -> UTC window {day_start_utc.isoformat()} to {day_end_utc.isoformat()}"
         )
-    
-    return today_start_utc, tomorrow_start_utc
+    return day_start_utc, day_end_utc
 
 
 @app.get("/api/news")
 def get_news(db: Session = Depends(get_db)):
     """
-    Returns live RSS items from the database for today only (Pacific Time), or falls back to static news.json.
-    
-    Only returns items fetched today in Pacific Time (fetched_at >= today 00:00 PT AND fetched_at < tomorrow 00:00 PT).
-    The database comparison uses UTC boundaries converted from Pacific Time.
-    
-    Maintains the existing frontend response contract:
-    - Array of objects with: id, feedId (for logo mapping), headline, summary, sourceName, sourceUrl, 
-      pregeneratedCaption, basePrompt, initialImageUrl, category (feed display tag: CNN Top, Fox US, etc.)
+    Returns the most recent batch of RSS items from the database (one calendar day in Pacific Time).
+
+    Uses the latest fetch date that has data: e.g. yesterday's headlines before the daily cron runs,
+    today's after it runs. Never mixes days. Returns [] if there are no items.
     """
     try:
-        today_start_utc, tomorrow_start_utc = _get_today_date_range()
-        
-        # Query database for items fetched today only (using UTC boundaries)
+        date_range = _get_latest_fetch_date_range(db)
+        if date_range is None:
+            return []
+
+        day_start_utc, day_end_utc = date_range
+
         result = db.execute(
             text("""
                 SELECT 
@@ -224,83 +216,54 @@ def get_news(db: Session = Depends(get_db)):
                     f.name as feed_name
                 FROM items i
                 JOIN feeds f ON i.feed_id = f.id
-                WHERE i.fetched_at >= :today_start_utc 
-                  AND i.fetched_at < :tomorrow_start_utc
+                WHERE i.fetched_at >= :day_start_utc
+                  AND i.fetched_at < :day_end_utc
                   AND i.feed_id != 'cnn_top'
                 ORDER BY i.published_at DESC NULLS LAST, i.fetched_at DESC
                 LIMIT :limit
             """),
             {
                 "limit": MAX_NEWS_ITEMS,
-                "today_start_utc": today_start_utc,
-                "tomorrow_start_utc": tomorrow_start_utc,
+                "day_start_utc": day_start_utc,
+                "day_end_utc": day_end_utc,
             }
         )
-        
-        rows = result.fetchall()
-        
-        if rows and len(rows) > 0:
-            # Map database rows to frontend contract
-            news_items = []
-            for idx, row in enumerate(rows):
-                # Use UUID directly as stable unique identifier (convert to string)
-                item_id = str(row[0])  # row[0] is the UUID
-                
-                # Use published_at if available, otherwise fetched_at
-                date = row[4] if row[4] else row[5]
-                
-                # Generate basePrompt from title and summary
-                title = row[1] or ""
-                summary = row[2] or ""
-                base_prompt = f"{title}. {summary[:100]}" if summary else title
-                
-                # Generate pregeneratedCaption from title (simplified)
-                caption = title[:80] + "..." if len(title) > 80 else title
-                
-                feed_id = row[6] or ""
-                feed_name = row[7] or "Unknown Source"
-                source_tag = FEED_DISPLAY_TAGS.get(feed_id, feed_name)
-                # Always show "WSJ" and correct feedId for Wall Street Journal
-                if feed_id == "wsj_us" or (feed_name and "Wall Street Journal" in feed_name):
-                    source_tag = "WSJ"
-                    feed_id = "wsj_us"
 
-                news_item = {
-                    "id": item_id,
-                    "feedId": feed_id,
-                    "headline": title,
-                    "summary": summary or "",
-                    "sourceName": feed_name,
-                    "sourceUrl": row[3] or "",  # url
-                    "pregeneratedCaption": caption,
-                    "basePrompt": base_prompt,
-                    "initialImageUrl": "",  # RSS items don't have pre-generated images (empty string for frontend compatibility)
-                    "category": source_tag,  # feed display tag (CNN Top, Fox US, etc.)
-                }
-                news_items.append(news_item)
-            
-            return news_items
-        
-        # Fallback to static news.json only if flag is enabled
-        if ALLOW_STATIC_NEWS_FALLBACK:
-            return _load_static_news()
-        else:
-            # Return empty list if no items found and fallback is disabled
-            return []
-    
+        rows = result.fetchall()
+
+        news_items = []
+        for row in rows:
+            item_id = str(row[0])
+            title = row[1] or ""
+            summary = row[2] or ""
+            base_prompt = f"{title}. {summary[:100]}" if summary else title
+            caption = title[:80] + "..." if len(title) > 80 else title
+            feed_id = row[6] or ""
+            feed_name = row[7] or "Unknown Source"
+            source_tag = FEED_DISPLAY_TAGS.get(feed_id, feed_name)
+            if feed_id == "wsj_us" or (feed_name and "Wall Street Journal" in feed_name):
+                source_tag = "WSJ"
+                feed_id = "wsj_us"
+            news_items.append({
+                "id": item_id,
+                "feedId": feed_id,
+                "headline": title,
+                "summary": summary or "",
+                "sourceName": feed_name,
+                "sourceUrl": row[3] or "",
+                "pregeneratedCaption": caption,
+                "basePrompt": base_prompt,
+                "initialImageUrl": "",
+                "category": source_tag,
+            })
+        return news_items
+
     except Exception as e:
-        # Log error without exposing secrets
         error_msg = str(e)
         if "DATABASE_URL" in error_msg or "password" in error_msg.lower():
             error_msg = "Database query error"
         print(f"Error fetching news from database: {error_msg}")
-        
-        # Fallback to static news.json on error only if flag is enabled
-        if ALLOW_STATIC_NEWS_FALLBACK:
-            return _load_static_news()
-        else:
-            # Return empty list on error if fallback is disabled
-            return []
+        return []
 
 
 def _load_static_news():
@@ -330,10 +293,10 @@ def _lookup_headline_by_id(headline_id: str, db: Session) -> dict:
     """
     Look up a headline by its ID from the database or static fallback.
 
-    No date filter: the news list is already restricted to "today" by the endpoint
-    that serves headlines. Image generation just uses whatever headline the user
-    clicked (by ID). For DB items we match UUID and exclude cnn_top; for static
-    fallback we use numeric id from news.json when ALLOW_STATIC_NEWS_FALLBACK is True.
+    No date filter: the news list is already restricted to the most recent batch by
+    the endpoint that serves headlines. Image generation just uses whatever headline
+    the user clicked (by ID). For DB items we match UUID and exclude cnn_top; for
+    static fallback we use numeric id from news.json when ALLOW_STATIC_NEWS_FALLBACK is True.
     """
     is_uuid = _is_valid_uuid(headline_id)
 

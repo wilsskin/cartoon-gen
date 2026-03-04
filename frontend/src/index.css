@@ -1,5 +1,6 @@
 :root {
   font-family: 'Crimson Text', Georgia, serif;
+  font-size: 16px;
   line-height: 1.33;
   font-weight: 400;
   color: #000000;
@@ -14,6 +15,12 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-size: inherit;
+  font-weight: inherit;
+  margin: 0;
 }
 
 body {
@@ -328,6 +335,7 @@ body {
   display: block;
   background: #ffffff;
   border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.3);
 }
 
 /* Gallery controls: 44px circular buttons, 16px icon, same style for close and arrows */
@@ -853,6 +861,10 @@ a.footer-text:hover {
   box-sizing: border-box;
 }
 
+.generation-card--loading {
+  background-color: #f5f5f5;
+}
+
 /* CanvasMeme wrapper: fill card content area so image can shrink to fit (not the error state) */
 .generation-card > div:not(.generation-error) {
   display: flex;
@@ -918,7 +930,11 @@ a.footer-text:hover {
     transform: rotate(0deg);
     opacity: 0;
   }
-  5% {
+  8% {
+    transform: rotate(0deg);
+    opacity: 0;
+  }
+  12% {
     transform: rotate(0deg);
     opacity: 1;
   }
@@ -934,9 +950,9 @@ a.footer-text:hover {
     transform: rotate(-90deg);
     opacity: 1;
   }
-  95% {
+  92% {
     transform: rotate(-90deg);
-    opacity: 1;
+    opacity: 0;
   }
   100% {
     transform: rotate(-90deg);
@@ -1243,7 +1259,7 @@ canvas {
 
   .landing-footer,
   .generation-footer {
-    padding: 72px 24px 32px;
+    padding: 72px 24px 48px;
   }
 
   .generation-main {

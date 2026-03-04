@@ -57,7 +57,7 @@ const HowItWorksPage = () => {
             <section className="how-it-works-section">
               <h2 className="how-it-works-h2">Origin Story</h2>
               <p className="how-it-works-p">
-              CartoonGen started at a three hour SF hackathon in fall 2025. My partner Aryan Dagnas and I initially set out to build an app that used Sora to transform news headlines into short videos, but the API costs were too high, so we pivoted to image generation. After the hackathon ended, I continued building the project on my own. I integrated live RSS feeds, set up a daily cron job, and connected the Gemini API to generate satirical images from real headlines. You can explore the full codebase on <a href="https://github.com/wilsskin/cartoon-gen" target="_blank" rel="noopener noreferrer" className="footer-link how-it-works-github-link">GitHub</a>.
+              CartoonGen was born at a three hour SF hackathon in fall 2025. My partner <a href="https://github.com/aryandaga7" target="_blank" rel="noopener noreferrer" className="footer-link how-it-works-github-link">Aryan Dagnas</a> and I initially set out to build an app that used Sora to transform news headlines into short videos, but the API costs were too high, so we pivoted to image generation. After the hackathon ended, I continued building the project on my own. I integrated live RSS feeds, set up a daily cron job, and connected the Gemini API to generate satirical images from real headlines. You can explore the full codebase on <a href="https://github.com/wilsskin/cartoon-gen" target="_blank" rel="noopener noreferrer" className="footer-link how-it-works-github-link">GitHub</a>.
               </p>
             </section>
           </div>
