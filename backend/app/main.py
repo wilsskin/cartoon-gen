@@ -780,12 +780,13 @@ def debug_db(db: Session = Depends(get_db)):
 def debug_ingest():
     """
     Manual trigger endpoint for RSS ingestion (local testing only).
-    
-    This endpoint has no authentication and should be removed or secured
-    before production deployment.
-    
+
+    Only works when DEBUG_MODE=true. Returns 404 otherwise.
+
     Returns summary of ingestion run.
     """
+    if not DEBUG_MODE:
+        raise HTTPException(status_code=404, detail="Debug endpoint not available")
     try:
         summary = run_rss_ingest()
         return summary

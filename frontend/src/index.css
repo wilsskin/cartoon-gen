@@ -1,40 +1,33 @@
 /* Self-hosted fonts — exact same woff2 files as Google Fonts, served from same
-   origin to eliminate network round-trips. font-display: block means text is
-   invisible for the ~30ms it takes to load the file, then renders in the correct
-   font with no fallback swap and no flicker. */
+   origin to eliminate network round-trips. font-display: swap shows fallback
+   text immediately and swaps in the custom font once loaded. */
 @font-face {
   font-family: 'Crimson Text';
   font-style: normal;
   font-weight: 400;
-  font-display: block;
+  font-display: swap;
   src: url('/fonts/crimson-text-400-latin.woff2') format('woff2');
 }
 @font-face {
   font-family: 'Crimson Text';
   font-style: normal;
   font-weight: 600;
-  font-display: block;
+  font-display: swap;
   src: url('/fonts/crimson-text-600-latin.woff2') format('woff2');
 }
 @font-face {
   font-family: 'Crimson Text';
   font-style: normal;
   font-weight: 700;
-  font-display: block;
+  font-display: swap;
   src: url('/fonts/crimson-text-700-latin.woff2') format('woff2');
 }
+/* Crimson Pro is a variable font — single file covers the full weight range */
 @font-face {
   font-family: 'Crimson Pro';
   font-style: normal;
-  font-weight: 400;
-  font-display: block;
-  src: url('/fonts/crimson-pro-latin.woff2') format('woff2');
-}
-@font-face {
-  font-family: 'Crimson Pro';
-  font-style: normal;
-  font-weight: 700;
-  font-display: block;
+  font-weight: 200 900;
+  font-display: swap;
   src: url('/fonts/crimson-pro-latin.woff2') format('woff2');
 }
 
