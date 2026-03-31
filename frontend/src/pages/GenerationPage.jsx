@@ -9,7 +9,7 @@ import foxLogo from '../assets/images/fox-us.svg';
 import nbcLogo from '../assets/images/nbc.svg';
 import nytLogo from '../assets/images/nyt.svg';
 import nprLogo from '../assets/images/npr.svg';
-import wsjLogo from '../assets/images/wsj.png';
+import wsjLogo from '../assets/images/wsj.svg';
 
 const FEED_LOGOS = {
   fox_us: foxLogo,
@@ -416,11 +416,13 @@ const GenerationPage = ({ newsItems, isLoading }) => {
               onMouseEnter={showSourceLinkTooltip}
               onMouseLeave={hideSourceLinkTooltip}
             >
-              <img
-                src={FEED_LOGOS[selectedNews.feedId]}
-                alt={selectedNews.category || 'News source'}
-                className="generation-source-logo"
-              />
+              <span className={`logo-frame logo-frame--source logo-feed--${selectedNews.feedId}`}>
+                <img
+                  src={FEED_LOGOS[selectedNews.feedId]}
+                  alt={selectedNews.category || 'News source'}
+                  className="generation-source-logo"
+                />
+              </span>
               <span className="generation-action-tooltip" data-visible={sourceLinkTooltipVisible}>View article</span>
             </a>
           </div>

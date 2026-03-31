@@ -360,29 +360,28 @@ def _build_prompt_template(headline: str, summary: str) -> str:
         Complete prompt string for image generation
     """
     return (
-        "TASK: Create a bold political cartoon inspired by the headline below.\n\n"
-        f"HEADLINE: {headline}\n"
-        f"SUMMARY (for context only, do not illustrate literally): {summary}\n\n"
-        "CORE DIRECTION:\n"
-        "- Communicate ONE clear idea or joke using a single strong visual metaphor.\n"
-        "- Reduce complexity: no more than 2–3 main visual elements.\n"
-        "- The cartoon should be immediately readable at a glance.\n\n"
-        "STYLE:\n"
-        "- Classic newspaper political cartoon style with confident ink lines.\n"
-        "- Limited color palette: black, white, gray, plus at most 2 accent colors.\n"
-        "- Hand-drawn, editorial, slightly exaggerated — clever and sharp, not busy.\n\n"
-        "COMPOSITION:\n"
-        "- Square format (1:1 aspect ratio).\n"
-        "- Clear focal point, strong visual hierarchy, plenty of white space.\n"
-        "- Minimal text: use at most three short labels or captions only if absolutely necessary.\n\n"
-        "TONE:\n"
-        "- Bold, satirical, and visually striking.\n"
-        "- Prioritize visual humor and metaphor over explanation.\n\n"
-        "SAFETY:\n"
-        "- Punch up at power, systems, or institutions using symbolism; avoid cruelty, hate, or personal attacks.\n\n"
-        "GOAL:\n"
-        "- Create a simple, memorable political cartoon that lands one strong message through visual satire."
-    )
+    f"Create a political cartoon about this headline:\n"
+    f'"{headline}"\n\n'
+    f"Context: {summary}\n\n"
+    
+    "TASK & CONSTRAINTS:\n"
+    "- Square format (1:1 aspect ratio), solid white background.\n"
+    "- Maximum 2-3 visual elements total.\n"
+    "- New Yorker editorial cartoon style: confident ink lines, limited color palette "
+    "(black/white/gray + 1-2 accent colors max).\n"
+    "- Use satire to critique power, systems, or institutions — avoid personal attacks.\n\n"
+    
+    "STYLE & APPROACH:\n"
+    "- The cartoon must work as a visual joke, pun, or ironic juxtaposition — NOT a literal illustration of the headline.\n"
+    "- If depicting a real person: exaggerate distinctive features (hair, expression, posture) for instant recognition.\n"
+    "- Use a single strong visual metaphor that creates an 'aha' moment.\n"
+    "- Do NOT create infographics, diagrams, or explanatory illustrations.\n\n"
+    
+    "TEXT RULES:\n"
+    "- Use text ONLY for: speech bubbles, signs held by characters, or essential 1-2 word labels.\n"
+    "- Never use text to explain the joke or add multiple labels.\n"
+    "- When in doubt, use less text."
+)
 
 
 # --- Rate Limiting ---

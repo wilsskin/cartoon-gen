@@ -6,10 +6,10 @@ import foxLogo from '../assets/images/fox-us.svg';
 import nbcLogo from '../assets/images/nbc.svg';
 import nytLogo from '../assets/images/nyt.svg';
 import nprLogo from '../assets/images/npr.svg';
-import wsjLogo from '../assets/images/wsj.png';
-import heroCartoon1 from '../assets/images/hero-cartoon-1.png';
-import heroCartoon2 from '../assets/images/hero-cartoon-2.png';
-import heroCartoon3 from '../assets/images/hero-cartoon-3.png';
+import wsjLogo from '../assets/images/wsj.svg';
+import heroCartoon1 from '../assets/images/hero-cartoon-1.webp';
+import heroCartoon2 from '../assets/images/hero-cartoon-2.webp';
+import heroCartoon3 from '../assets/images/hero-cartoon-3.webp';
 import iconX from '../assets/images/icon-x.svg';
 import iconArrowLeft from '../assets/images/icon-arrow-left.svg';
 import iconArrowRight from '../assets/images/icon-arrow-right.svg';
@@ -272,11 +272,13 @@ const LandingPage = ({ newsItems, isLoading }) => {
                     role="option"
                     aria-selected={selectedFeed === option.id}
                   >
-                    <img
-                      src={FEED_LOGOS[option.id]}
-                      alt=""
-                      className="filter-option-logo"
-                    />
+                    <span className={`logo-frame logo-frame--filter logo-feed--${option.id}`}>
+                      <img
+                        src={FEED_LOGOS[option.id]}
+                        alt=""
+                        className="filter-option-logo"
+                      />
+                    </span>
                     <span className="filter-option-label">{option.label}</span>
                   </button>
                 ))}
@@ -287,7 +289,7 @@ const LandingPage = ({ newsItems, isLoading }) => {
           {/* News Items List */}
           <div className="news-list-section" key={selectedFeed || 'all'}>
             {isLoading ? (
-              <div className="news-loading news-loading--shimmer">Headlines loading...</div>
+              <div className="news-loading news-loading--dots">Loading headlines<span className="loading-dot loading-dot-1">.</span><span className="loading-dot loading-dot-2">.</span><span className="loading-dot loading-dot-3">.</span></div>
             ) : newsItems.length === 0 ? (
               <div className="news-loading">No headlines available</div>
             ) : (
@@ -320,7 +322,9 @@ const LandingPage = ({ newsItems, isLoading }) => {
                       onMouseEnter={() => showArticleTooltip(item.id)}
                       onMouseLeave={hideArticleTooltip}
                     >
-                      <img src={FEED_LOGOS[item.feedId]} alt="" className="news-item-logo" />
+                      <span className={`logo-frame logo-frame--news logo-feed--${item.feedId}`}>
+                        <img src={FEED_LOGOS[item.feedId]} alt="" className="news-item-logo" />
+                      </span>
                       <span className="news-item-category">{FEED_LABELS[item.feedId] || item.category}</span>
                       <span className="generation-action-tooltip" data-visible={articleTooltipId === item.id}>View article</span>
                     </a>

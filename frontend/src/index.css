@@ -1,10 +1,50 @@
+/* Self-hosted fonts — exact same woff2 files as Google Fonts, served from same
+   origin to eliminate network round-trips. font-display: block means text is
+   invisible for the ~30ms it takes to load the file, then renders in the correct
+   font with no fallback swap and no flicker. */
+@font-face {
+  font-family: 'Crimson Text';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url('/fonts/crimson-text-400-latin.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Crimson Text';
+  font-style: normal;
+  font-weight: 600;
+  font-display: block;
+  src: url('/fonts/crimson-text-600-latin.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Crimson Text';
+  font-style: normal;
+  font-weight: 700;
+  font-display: block;
+  src: url('/fonts/crimson-text-700-latin.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Crimson Pro';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url('/fonts/crimson-pro-latin.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Crimson Pro';
+  font-style: normal;
+  font-weight: 700;
+  font-display: block;
+  src: url('/fonts/crimson-pro-latin.woff2') format('woff2');
+}
+
 :root {
   font-family: 'Crimson Text', Georgia, serif;
   font-size: 16px;
   line-height: 1.33;
   font-weight: 400;
   color: #000000;
-  background-color: #FFFFFF;
+  background-color: #FFFCF5;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -27,7 +67,6 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background-color: #FFFFFF;
 }
 
 #root {
@@ -40,12 +79,10 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background-color: #FFFFFF;
 }
 
 /* Header Styles */
 .header {
-  background-color: #FFFFFF;
   padding: 8px 0;
 }
 
@@ -82,7 +119,6 @@ body {
 .landing-page {
   flex: 1;
   width: 100%;
-  background-color: #FFFFFF;
 }
 
 .landing-container {
@@ -98,7 +134,6 @@ body {
 .how-it-works-page {
   flex: 1;
   width: 100%;
-  background-color: #FFFFFF;
 }
 
 .how-it-works-container {
@@ -148,6 +183,35 @@ body {
   line-height: 1.33;
   color: #767676;
   margin: 0;
+}
+
+.prompt-block {
+  background: #FAF7F0;
+  border: 1px solid rgba(118, 118, 118, 0.15);
+  border-radius: 8px;
+  padding: 16px 16px 16px 16px;
+  margin-top: 8px;
+  overflow-x: auto;
+}
+
+.prompt-pre {
+  font-family: 'Crimson Text', Georgia, serif;
+  font-size: 16px;
+  line-height: 1.33;
+  color: #000000;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.prompt-section {
+  font-weight: 600;
+  color: #000000;
+}
+
+.prompt-var {
+  color: #767676;
+  font-style: italic;
 }
 
 .how-it-works-footer {
@@ -248,12 +312,7 @@ body {
   overflow: hidden;
   box-sizing: border-box;
   cursor: pointer;
-  /* Transform animates first (lift 4px); z-index updates after so card doesn’t pop to top instantly */
-  transition: transform 150ms cubic-bezier(0.25, 0.1, 0.25, 1), z-index 0s 150ms;
-}
-
-.hero-image-card:hover {
-  z-index: 10;
+  transition: transform 150ms cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 
 .hero-image-card img {
@@ -413,7 +472,7 @@ body {
 
 .hero-gallery-prev:active,
 .hero-gallery-next:active {
-  transform: translateY(-50%) scale(0.9);
+  transform: translateY(-50%) scale(0.97);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
   transition: transform 100ms cubic-bezier(0.25, 0.1, 0.25, 1),
               box-shadow 100ms cubic-bezier(0.25, 0.1, 0.25, 1);
@@ -421,7 +480,7 @@ body {
 
 .hero-gallery-prev:active img,
 .hero-gallery-next:active img {
-  transform: scale(0.9);
+  transform: scale(0.95);
   transition: transform 100ms cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 
@@ -498,10 +557,10 @@ body {
   position: absolute;
   top: calc(100% + 8px);
   left: 0;
-  background: #ffffff;
   border: 1px solid rgba(118, 118, 118, 0.15);
   border-radius: 8px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+  background-color: #FFFDFA;
   min-width: 180px;
   padding: 4px 0;
   z-index: 100;
@@ -534,12 +593,10 @@ body {
 }
 
 .filter-option:hover {
-  background-color: #f5f5f5;
+  background-color: #F7F4ED;
 }
 
 .filter-option-logo {
-  width: 18px;
-  height: 14px;
   object-fit: contain;
   opacity: 0.7;
 }
@@ -564,22 +621,43 @@ body {
   font-family: 'Crimson Text', Georgia, serif;
   font-size: 20px;
   color: #767676;
-  padding: 16px 0 8px;
+  padding: 8px 0 8px;
   letter-spacing: -0.015em;
-  line-height: 1.2;
+  line-height: 1.33;
 }
 
-.news-loading--shimmer {
-  animation: newsLoadingPulse 2s cubic-bezier(0.25, 0.1, 0.25, 1) infinite;
+.news-loading--dots .loading-dot {
+  display: inline-block;
+  opacity: 0;
 }
 
-@keyframes newsLoadingPulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.3;
-  }
+.loading-dot-1 {
+  animation: loadingDot1 2.4s cubic-bezier(0.25, 0.1, 0.25, 1) infinite;
+}
+.loading-dot-2 {
+  animation: loadingDot2 2.4s cubic-bezier(0.25, 0.1, 0.25, 1) infinite;
+}
+.loading-dot-3 {
+  animation: loadingDot3 2.4s cubic-bezier(0.25, 0.1, 0.25, 1) infinite;
+}
+
+@keyframes loadingDot1 {
+  0%, 4%, 78%, 100% { opacity: 0; }
+  10%               { opacity: 1; }
+  62%               { opacity: 1; }
+  72%               { opacity: 0; }
+}
+@keyframes loadingDot2 {
+  0%, 20%, 78%, 100% { opacity: 0; }
+  27%                { opacity: 1; }
+  62%                { opacity: 1; }
+  72%                { opacity: 0; }
+}
+@keyframes loadingDot3 {
+  0%, 37%, 78%, 100% { opacity: 0; }
+  44%                { opacity: 1; }
+  62%                { opacity: 1; }
+  72%                { opacity: 0; }
 }
 
 .news-item {
@@ -654,9 +732,6 @@ body {
 }
 
 .news-item-logo {
-  display: block;
-  max-width: 21px;
-  max-height: 16px;
   object-fit: contain;
   transition: opacity 0.15s cubic-bezier(0.25, 0.1, 0.25, 1);
   will-change: opacity;
@@ -791,7 +866,6 @@ a.footer-text:hover {
   max-width: 576px;
   width: 100%;
   margin: 0 auto;
-  background-color: #FFFFFF;
   flex: 1;
 }
 
@@ -851,7 +925,7 @@ a.footer-text:hover {
   width: 100%;
   aspect-ratio: 1 / 1;
   border-radius: 8px;
-  border: 1px solid rgba(118, 118, 118, 0.3);
+  border: 1px solid rgba(0, 0, 0, 0.1);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -859,10 +933,11 @@ a.footer-text:hover {
   overflow: hidden;
   padding: 8px 8px 8px 8px;
   box-sizing: border-box;
+  background-color: #ffffff;
 }
 
 .generation-card--loading {
-  background-color: #f5f5f5;
+  background-color: #F7F4ED;
 }
 
 /* CanvasMeme wrapper: fill card content area so image can shrink to fit (not the error state) */
@@ -1069,12 +1144,67 @@ a.footer-text:hover {
 }
 
 .generation-source-logo {
-  display: block;
-  max-width: 26px;
-  max-height: 20px;
   object-fit: contain;
   opacity: 1;
 }
+
+/* ─── Logo frame: optical normalization ───────────────────────────────────────
+   Each logo sits in a fixed-size inline-flex wrapper that establishes a stable
+   layout footprint. Per-feed content sizing (via img %) is applied inside the
+   frame; overflow: hidden clips any excess so spacing is never disturbed.
+   ─────────────────────────────────────────────────────────────────────────── */
+.logo-frame {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Context frame sizes */
+.logo-frame--filter { width: 18px; height: 14px; }
+.logo-frame--news   { width: 21px; height: 16px; }
+.logo-frame--source { width: 26px; height: 20px; }
+
+/* Logo image fills frame by default */
+.logo-frame img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Per-feed optical scale: transform scales visual rendering only — layout box
+   stays at frame size so spacing is never disturbed. No overflow: hidden on the
+   frame means nothing gets clipped (NYT portrait logo was being cut off).
+   Aspect ratios: Fox 32×26, NBC 32×18, NYT 25×32 (portrait), NPR 32×11 (flat),
+   WSJ 32×18 (SVG, same as NBC — no adjustment needed). */
+.logo-feed--nyt_home img { transform: scale(1.07); } /* portrait — fills landscape frame better */
+.logo-feed--npr_news img { transform: scale(1.06); } /* very flat — avoids wispy appearance */
+.logo-feed--fox_us   img { transform: scale(0.96); } /* near-square, fills frame fully — trim slightly */
+/* nbc_top, wsj_us: 32×18 SVG, good baseline — no adjustment */
+
+/* How It Works logo row */
+.logo-frame--how {
+  width: 40px;
+  height: 40px;
+  padding: 5px;
+  box-sizing: border-box;
+  border-radius: 5px;
+  opacity: 0.46;
+}
+.how-it-works-logo-row { display: flex; flex-direction: row; gap: 4px; align-items: center; margin-top: 4px; }
+
+/* Scoped --how overrides: equalize visual weight within the 30×30 content area.
+   NYT portrait T fills full height → scale down moderately.
+   WSJ bold text fills full width → match Fox/NBC range.
+   NPR is very flat → slight boost.
+   Fox near-square fills frame well → moderate trim.
+   NBC peacock → match Fox trim. */
+.logo-frame--how.logo-feed--nyt_home img { transform: scale(0.68); }
+.logo-frame--how.logo-feed--wsj_us   img { transform: scale(0.82); }
+.logo-frame--how.logo-feed--npr_news  img { transform: scale(1.05); }
+.logo-frame--how.logo-feed--fox_us    img { transform: scale(0.80); }
+.logo-frame--how.logo-feed--nbc_top   img { transform: scale(0.85); }
 
 /* Text Content */
 .generation-text-content {
